@@ -151,11 +151,25 @@
       border-color: var(--brand);
     }
 
+    .tab.icon-tab {
+      width: 42px;
+      height: 42px;
+      padding: 0;
+      display: grid;
+      place-items: center;
+      font-size: 1.18rem;
+      line-height: 1;
+    }
+
     .layout {
       display: grid;
       grid-template-columns: 360px 1fr;
       gap: 18px;
       align-items: start;
+    }
+
+    .layout.full-width {
+      grid-template-columns: 1fr;
     }
 
     .panel {
@@ -436,6 +450,98 @@
       background: rgba(255, 255, 255, .035);
     }
 
+    .news-grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .news-card {
+      display: grid;
+      grid-template-columns: 180px 1fr;
+      gap: 14px;
+      align-items: stretch;
+      width: 100%;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, .045);
+      color: var(--ink);
+      text-align: left;
+    }
+
+    .news-card:hover {
+      border-color: rgba(19, 232, 255, .7);
+      background: rgba(19, 232, 255, .07);
+    }
+
+    .news-image {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid rgba(19, 232, 255, .2);
+      background: linear-gradient(135deg, rgba(176, 38, 255, .28), rgba(19, 232, 255, .18));
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-weight: 950;
+    }
+
+    .news-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: rgba(5, 9, 20, .62);
+      display: block;
+    }
+
+    .news-body {
+      display: grid;
+      gap: 8px;
+      align-content: center;
+      min-width: 0;
+    }
+
+    .news-title {
+      font-size: 1.15rem;
+      line-height: 1.18;
+      font-weight: 950;
+    }
+
+    .news-summary {
+      color: var(--muted);
+      line-height: 1.42;
+    }
+
+    .news-detail-header {
+      display: grid;
+      gap: 14px;
+    }
+
+    .news-hero {
+      width: 100%;
+      max-height: 430px;
+      border-radius: 8px;
+      border: 1px solid rgba(19, 232, 255, .2);
+      object-fit: contain;
+      background: rgba(5, 9, 20, .62);
+    }
+
+    .news-full-text {
+      white-space: pre-wrap;
+      color: #e9edff;
+      line-height: 1.55;
+    }
+
+    .youtube-frame {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      margin-top: 14px;
+      background: #050914;
+    }
+
     .calendar-tools {
       display: flex;
       gap: 10px;
@@ -699,6 +805,10 @@
         grid-template-columns: 96px 1fr;
       }
 
+      .news-card {
+        grid-template-columns: 1fr;
+      }
+
       .release-card .badge {
         grid-column: auto;
       }
@@ -727,13 +837,14 @@
     </header>
 
     <nav class="tabs" aria-label="Vistas">
-      <button class="tab active" data-view="muro" type="button">Muro</button>
+      <button class="tab active" data-view="noticias" type="button">Noticias</button>
+      <button class="tab" data-view="muro" type="button">Juegos terminados</button>
       <button class="tab" data-view="calendario" type="button">Lanzamientos</button>
-      <button class="tab" data-view="settings" type="button">Settings</button>
+      <button class="tab icon-tab" data-view="settings" type="button" title="Settings" aria-label="Settings">&#9881;</button>
     </nav>
 
-    <section class="layout">
-      <aside class="panel">
+    <section class="layout" id="mainLayout">
+      <aside class="panel" id="profilePanel">
         <div class="panel-inner">
           <div class="section-head">
             <h2>Perfiles</h2>
@@ -750,6 +861,46 @@
             <span class="connection-dot"></span>
             <span>Comprobando conexión con Supabase...</span>
           </div>
+          <section id="view-noticias">
+            <div class="section-head">
+              <h2>Noticias</h2>
+              <div class="top-actions">
+                <button class="button add-game-button" id="newNewsButton" type="button" title="Añadir noticia" aria-label="Añadir noticia">+</button>
+              </div>
+            </div>
+            <div class="news-grid" id="newsList"></div>
+          </section>
+
+          <section id="view-noticia-form" class="hidden">
+            <div class="section-head">
+              <h2>Nueva noticia</h2>
+              <button class="button secondary" id="cancelNewsButton" type="button">Volver</button>
+            </div>
+            <form id="newsForm">
+              <label>
+                Imagen de cabecera
+                <input id="newsImage" type="file" accept="image/*">
+              </label>
+              <label>
+                Título
+                <input id="newsTitle" required placeholder="Ej. Directo importante esta noche">
+              </label>
+              <label>
+                Texto
+                <textarea id="newsText" required placeholder="Escribe la noticia. Si pegas un enlace de YouTube, aparecerá reproducible dentro."></textarea>
+              </label>
+              <button class="button" type="submit">Publicar noticia</button>
+            </form>
+          </section>
+
+          <section id="view-noticia-detalle" class="hidden">
+            <div class="section-head">
+              <h2>Noticia</h2>
+              <button class="button secondary" id="backToNewsButton" type="button">Volver</button>
+            </div>
+            <article id="newsDetail"></article>
+          </section>
+
           <section id="view-muro">
             <div class="section-head">
               <h2>Juegos terminados</h2>
@@ -862,14 +1013,14 @@
               </div>
               <div class="settings-block">
                 <h3>Exportar datos</h3>
-                <p class="small">Descarga una copia JSON de los juegos, perfiles y lanzamientos guardados.</p>
+                <p class="small">Descarga una copia JSON de los juegos, noticias, perfiles y lanzamientos guardados.</p>
                 <div class="top-actions">
                   <button class="button secondary" id="exportButton" type="button">Exportar datos</button>
                 </div>
               </div>
               <div class="settings-block">
                 <h3>Importar copia de seguridad</h3>
-                <p class="small">Carga un JSON exportado antes para recuperar perfiles, lanzamientos y juegos en este navegador.</p>
+                <p class="small">Carga un JSON exportado antes para recuperar noticias, perfiles, lanzamientos y juegos en este navegador.</p>
                 <label>
                   Archivo JSON
                   <input id="backupImport" type="file" accept="application/json,.json">
@@ -899,7 +1050,8 @@
 
     const initialState = {
       activeProfileId: "cris",
-      currentView: "muro",
+      currentView: "noticias",
+      activeNewsId: "",
       profiles: [
         { id: "cris", name: "Cristian", color: "#b026ff" },
         { id: "mara", name: "Dani", color: "#13e8ff" },
@@ -927,6 +1079,15 @@
           screenshots: []
         }
       ],
+      news: [
+        {
+          id: crypto.randomUUID(),
+          title: "Bienvenidos a Los Insistidores",
+          text: "Este será el tablón para dejar noticias, avisos, vídeos y cualquier publicación que queráis destacar para el grupo.",
+          image: "",
+          createdAt: new Date().toISOString()
+        }
+      ],
       releases: [
         { id: "sample-1", date: "2026-06-19", dayLabel: "Jun 19", title: "EA Sports UFC 6", platforms: "Xbox Series X / PlayStation 5 / PC", hype: "29", url: "https://rawg.io/search?query=EA%20Sports%20UFC%206", cover: "", source: "RAWG.io" },
         { id: "sample-2", date: "2026-06-19", dayLabel: "Jun 19", title: "Thank You For Your Application", platforms: "PC", hype: "16", url: "https://rawg.io/search?query=Thank%20You%20For%20Your%20Application", cover: "", source: "RAWG.io" },
@@ -946,6 +1107,8 @@
     let state = normalizeState(loadState());
 
     const els = {
+      mainLayout: document.querySelector("#mainLayout"),
+      profilePanel: document.querySelector("#profilePanel"),
       profiles: document.querySelector("#profiles"),
       settingsProfiles: document.querySelector("#settingsProfiles"),
       connectionStatus: document.querySelector("#connectionStatus"),
@@ -962,6 +1125,15 @@
       rating: document.querySelector("#rating"),
       screenshots: document.querySelector("#screenshots"),
       review: document.querySelector("#review"),
+      newsList: document.querySelector("#newsList"),
+      newsDetail: document.querySelector("#newsDetail"),
+      newsForm: document.querySelector("#newsForm"),
+      newsImage: document.querySelector("#newsImage"),
+      newsTitle: document.querySelector("#newsTitle"),
+      newsText: document.querySelector("#newsText"),
+      newNewsButton: document.querySelector("#newNewsButton"),
+      cancelNewsButton: document.querySelector("#cancelNewsButton"),
+      backToNewsButton: document.querySelector("#backToNewsButton"),
       releaseGrid: document.querySelector("#releaseGrid"),
       releaseStatus: document.querySelector("#releaseStatus"),
       releaseDateMode: document.querySelector("#releaseDateMode"),
@@ -1006,6 +1178,18 @@
         profile.color = defaults.color;
         profile.avatar = profile.avatar || "";
       });
+
+      savedState.news = (savedState.news || structuredClone(initialState.news)).map(item => ({
+        id: item.id || crypto.randomUUID(),
+        title: item.title || "Noticia sin título",
+        text: item.text || "",
+        image: item.image || "",
+        createdAt: item.createdAt || new Date().toISOString()
+      }));
+      savedState.activeNewsId = savedState.activeNewsId || "";
+      if (savedState.currentView === "muro") {
+        savedState.currentView = "noticias";
+      }
 
       savedState.releases = (savedState.releases || structuredClone(initialState.releases)).map(release => ({
         ...release,
@@ -1155,6 +1339,7 @@
       renderProfiles();
       renderStats();
       renderTabs();
+      renderNews();
       renderFeedFilter();
       renderFeed();
       renderForm();
@@ -1216,11 +1401,83 @@
 
     function renderTabs() {
       document.querySelectorAll(".tab").forEach(tab => {
-        tab.classList.toggle("active", tab.dataset.view === state.currentView);
+        const isNewsArea = ["noticias", "noticia-form", "noticia-detalle"].includes(state.currentView);
+        tab.classList.toggle("active", tab.dataset.view === state.currentView || (tab.dataset.view === "noticias" && isNewsArea));
       });
-      ["muro", "perfil", "calendario", "settings"].forEach(view => {
+      ["noticias", "noticia-form", "noticia-detalle", "muro", "perfil", "calendario", "settings"].forEach(view => {
         document.querySelector(`#view-${view}`).classList.toggle("hidden", view !== state.currentView);
       });
+      const showProfiles = ["muro", "perfil"].includes(state.currentView);
+      els.profilePanel.classList.toggle("hidden", !showProfiles);
+      els.mainLayout.classList.toggle("full-width", !showProfiles);
+    }
+
+    function renderNews() {
+      const news = [...state.news].sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+      if (!news.length) {
+        els.newsList.innerHTML = `<div class="empty"><p>No hay noticias todavía. Pulsa + para publicar la primera.</p></div>`;
+      } else {
+        els.newsList.innerHTML = news.map(item => `
+          <button class="news-card" type="button" data-news="${item.id}">
+            <div class="news-image">
+              ${item.image ? `<img src="${item.image}" alt="Imagen de ${escapeHtml(item.title)}" loading="lazy">` : `<span>${escapeHtml(newsInitials(item.title))}</span>`}
+            </div>
+            <div class="news-body">
+              <p class="news-title">${escapeHtml(item.title)}</p>
+              <p class="small">${escapeHtml(formatDateTime(item.createdAt))}</p>
+              <p class="news-summary">${escapeHtml(summaryText(item.text, 180))}</p>
+            </div>
+          </button>
+        `).join("");
+      }
+
+      renderNewsDetail();
+    }
+
+    function renderNewsDetail() {
+      const item = state.news.find(newsItem => newsItem.id === state.activeNewsId);
+      if (!item) {
+        els.newsDetail.innerHTML = "";
+        return;
+      }
+
+      const videoId = youtubeId(item.text);
+      els.newsDetail.innerHTML = `
+        <div class="news-detail-header">
+          ${item.image ? `<img class="news-hero" src="${item.image}" alt="Imagen de ${escapeHtml(item.title)}">` : ""}
+          <div>
+            <h2>${escapeHtml(item.title)}</h2>
+            <p class="small">${escapeHtml(formatDateTime(item.createdAt))}</p>
+          </div>
+          <p class="news-full-text">${linkifyText(item.text)}</p>
+          ${videoId ? `<iframe class="youtube-frame" src="https://www.youtube.com/embed/${escapeHtml(videoId)}" title="Vídeo de YouTube" allowfullscreen></iframe>` : ""}
+        </div>
+      `;
+    }
+
+    function newsInitials(title) {
+      return String(title || "?").split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0].toUpperCase()).join("");
+    }
+
+    function summaryText(text, maxLength) {
+      const clean = String(text || "").replace(/\s+/g, " ").trim();
+      return clean.length > maxLength ? `${clean.slice(0, maxLength - 1).trim()}...` : clean;
+    }
+
+    function formatDateTime(value) {
+      const date = value ? new Date(value) : new Date();
+      return new Intl.DateTimeFormat("es", { dateStyle: "medium", timeStyle: "short" }).format(date);
+    }
+
+    function linkifyText(text) {
+      return escapeHtml(text).replace(/(https?:\/\/[^\s<]+)/g, url => {
+        return `<a class="source-link" href="${escapeHtml(url)}" target="_blank" rel="noreferrer">${escapeHtml(url)}</a>`;
+      });
+    }
+
+    function youtubeId(text) {
+      const match = String(text || "").match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+      return match ? match[1] : "";
     }
 
     function openGameFormForProfile(profileId) {
@@ -1444,8 +1701,9 @@
         ...imported,
         profiles: Array.isArray(imported.profiles) ? imported.profiles : structuredClone(initialState.profiles),
         games: Array.isArray(imported.games) ? imported.games.map(normalizeImportedGame).filter(Boolean) : [],
+        news: Array.isArray(imported.news) ? imported.news : structuredClone(initialState.news),
         releases: Array.isArray(imported.releases) ? imported.releases : structuredClone(initialState.releases),
-        currentView: "muro",
+        currentView: "noticias",
         activeProfileId: imported.activeProfileId || "cris"
       };
     }
@@ -1462,6 +1720,29 @@
         review: game.review || "",
         screenshots: Array.isArray(game.screenshots) ? game.screenshots : []
       };
+    }
+
+    async function handleNewsSubmit(event) {
+      event.preventDefault();
+      const title = els.newsTitle.value.trim();
+      const text = els.newsText.value.trim();
+      if (!title || !text) return;
+
+      const image = els.newsImage.files?.[0] ? await readFile(els.newsImage.files[0]) : "";
+      const item = {
+        id: crypto.randomUUID(),
+        title,
+        text,
+        image,
+        createdAt: new Date().toISOString()
+      };
+
+      state.news.unshift(item);
+      state.activeNewsId = item.id;
+      state.currentView = "noticia-detalle";
+      els.newsForm.reset();
+      render();
+      showToast("Noticia publicada");
     }
 
     async function handleSubmit(event) {
@@ -1807,6 +2088,32 @@
       });
     });
 
+    els.newNewsButton.addEventListener("click", () => {
+      state.currentView = "noticia-form";
+      render();
+    });
+
+    els.cancelNewsButton.addEventListener("click", () => {
+      els.newsForm.reset();
+      state.currentView = "noticias";
+      render();
+    });
+
+    els.backToNewsButton.addEventListener("click", () => {
+      state.currentView = "noticias";
+      render();
+    });
+
+    els.newsForm.addEventListener("submit", handleNewsSubmit);
+
+    els.newsList.addEventListener("click", event => {
+      const card = event.target.closest("[data-news]");
+      if (!card) return;
+      state.activeNewsId = card.dataset.news;
+      state.currentView = "noticia-detalle";
+      render();
+    });
+
     els.profiles.addEventListener("click", event => {
       const addButton = event.target.closest("[data-add-game]");
       if (addButton) {
@@ -1878,6 +2185,7 @@
     });
 
     async function startApp() {
+      state.currentView = "noticias";
       render();
       await loadRemoteGames();
     }
