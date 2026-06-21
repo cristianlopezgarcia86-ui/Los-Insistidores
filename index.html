@@ -240,8 +240,9 @@
     .avatar img {
       width: 100%;
       height: 100%;
-      object-fit: contain;
-      background: rgba(5, 9, 20, .55);
+      object-fit: cover;
+      object-position: center;
+      transform: scale(1.38);
       display: block;
     }
 
@@ -623,7 +624,7 @@
 
     .release-card {
       display: grid;
-      grid-template-columns: 126px 1fr;
+      grid-template-columns: 118px 1fr;
       gap: 12px;
       align-items: center;
       padding: 12px;
@@ -643,7 +644,7 @@
 
     .release-cover {
       width: 100%;
-      aspect-ratio: 4 / 3;
+      aspect-ratio: 3 / 4;
       border-radius: 8px;
       overflow: hidden;
       border: 1px solid rgba(19, 232, 255, .2);
@@ -654,14 +655,14 @@
       font-weight: 950;
       letter-spacing: 0;
       text-align: center;
-      padding: 10px;
+      padding: 0;
     }
 
     .release-cover img {
       width: 100%;
       height: 100%;
-      object-fit: contain;
-      background: rgba(5, 9, 20, .62);
+      object-fit: cover;
+      object-position: center;
       display: block;
     }
 
@@ -889,6 +890,7 @@
 
     <nav class="tabs" aria-label="Vistas">
       <button class="tab active" data-view="noticias" type="button">Noticias</button>
+      <button class="tab" data-view="analisis" type="button">Análisis</button>
       <button class="tab" data-view="muro" type="button">Juegos terminados</button>
       <button class="tab" data-view="calendario" type="button">Lanzamientos</button>
       <button class="tab icon-tab" data-view="settings" type="button" title="Settings" aria-label="Settings">&#9881;</button>
@@ -925,7 +927,10 @@
           <section id="view-noticia-form" class="hidden">
             <div class="section-head">
               <h2 id="newsFormTitle">Nueva noticia</h2>
-              <button class="button secondary" id="cancelNewsButton" type="button">Volver</button>
+              <div class="top-actions">
+                <button class="button warning hidden" id="deleteNewsButton" type="button">Borrar noticia</button>
+                <button class="button secondary" id="cancelNewsButton" type="button">Volver</button>
+              </div>
             </div>
             <form id="newsForm">
               <label>
@@ -950,6 +955,49 @@
               <button class="button secondary" id="backToNewsButton" type="button">Volver</button>
             </div>
             <article id="newsDetail"></article>
+          </section>
+
+          <section id="view-analisis" class="hidden">
+            <div class="section-head">
+              <h2>Análisis</h2>
+              <div class="top-actions">
+                <button class="button add-game-button" id="newAnalysisButton" type="button" title="Añadir análisis" aria-label="Añadir análisis">+</button>
+              </div>
+            </div>
+            <div class="news-grid" id="analysisList"></div>
+          </section>
+
+          <section id="view-analisis-form" class="hidden">
+            <div class="section-head">
+              <h2 id="analysisFormTitle">Nuevo análisis</h2>
+              <div class="top-actions">
+                <button class="button warning hidden" id="deleteAnalysisButton" type="button">Borrar análisis</button>
+                <button class="button secondary" id="cancelAnalysisButton" type="button">Volver</button>
+              </div>
+            </div>
+            <form id="analysisForm">
+              <label>
+                Imagen de cabecera
+                <input id="analysisImage" type="file" accept="image/*">
+              </label>
+              <label>
+                Título
+                <input id="analysisTitle" required placeholder="Ej. Análisis de Clair Obscur">
+              </label>
+              <label>
+                Texto
+                <textarea id="analysisText" required placeholder="Escribe el análisis. Si pegas un enlace de YouTube, aparecerá reproducible dentro."></textarea>
+              </label>
+              <button class="button" type="submit">Publicar análisis</button>
+            </form>
+          </section>
+
+          <section id="view-analisis-detalle" class="hidden">
+            <div class="section-head">
+              <h2>Análisis</h2>
+              <button class="button secondary" id="backToAnalysisButton" type="button">Volver</button>
+            </div>
+            <article id="analysisDetail"></article>
           </section>
 
           <section id="view-muro">
@@ -1076,14 +1124,14 @@
               </div>
               <div class="settings-block">
                 <h3>Exportar datos</h3>
-                <p class="small">Descarga una copia JSON de los juegos, noticias, perfiles y lanzamientos guardados.</p>
+                <p class="small">Descarga una copia JSON de los juegos, noticias, análisis, perfiles y lanzamientos guardados.</p>
                 <div class="top-actions">
                   <button class="button secondary" id="exportButton" type="button">Exportar datos</button>
                 </div>
               </div>
               <div class="settings-block">
                 <h3>Importar copia de seguridad</h3>
-                <p class="small">Carga un JSON exportado antes para recuperar noticias, perfiles, lanzamientos y juegos en este navegador.</p>
+                <p class="small">Carga un JSON exportado antes para recuperar noticias, análisis, perfiles, lanzamientos y juegos en este navegador.</p>
                 <label>
                   Archivo JSON
                   <input id="backupImport" type="file" accept="application/json,.json">
@@ -1116,6 +1164,7 @@
       activeProfileId: "cris",
       currentView: "noticias",
       activeNewsId: "",
+      activeAnalysisId: "",
       isAdmin: false,
       profiles: [
         { id: "cris", name: "Cristian", color: "#b026ff" },
@@ -1153,6 +1202,15 @@
           createdAt: new Date().toISOString()
         }
       ],
+      analyses: [
+        {
+          id: crypto.randomUUID(),
+          title: "Primer análisis",
+          text: "Aquí podréis publicar análisis completos de juegos, con imagen de cabecera, texto y vídeos de YouTube integrados.",
+          image: "",
+          createdAt: new Date().toISOString()
+        }
+      ],
       releases: [
         { id: "sample-1", date: "2026-06-19", dayLabel: "Jun 19", title: "EA Sports UFC 6", platforms: "Xbox Series X / PlayStation 5 / PC", hype: "29", url: "https://rawg.io/search?query=EA%20Sports%20UFC%206", cover: "", source: "RAWG.io" },
         { id: "sample-2", date: "2026-06-19", dayLabel: "Jun 19", title: "Thank You For Your Application", platforms: "PC", hype: "16", url: "https://rawg.io/search?query=Thank%20You%20For%20Your%20Application", cover: "", source: "RAWG.io" },
@@ -1170,6 +1228,7 @@
     let remoteReady = false;
     let remoteProfilesReady = false;
     let remoteNewsReady = false;
+    let remoteAnalysesReady = false;
     let remoteMessage = "Comprobando conexión con Supabase...";
     let state = normalizeState(loadState());
 
@@ -1206,6 +1265,18 @@
       newNewsButton: document.querySelector("#newNewsButton"),
       cancelNewsButton: document.querySelector("#cancelNewsButton"),
       backToNewsButton: document.querySelector("#backToNewsButton"),
+      deleteNewsButton: document.querySelector("#deleteNewsButton"),
+      analysisList: document.querySelector("#analysisList"),
+      analysisDetail: document.querySelector("#analysisDetail"),
+      analysisForm: document.querySelector("#analysisForm"),
+      analysisImage: document.querySelector("#analysisImage"),
+      analysisTitle: document.querySelector("#analysisTitle"),
+      analysisText: document.querySelector("#analysisText"),
+      analysisFormTitle: document.querySelector("#analysisFormTitle"),
+      newAnalysisButton: document.querySelector("#newAnalysisButton"),
+      cancelAnalysisButton: document.querySelector("#cancelAnalysisButton"),
+      backToAnalysisButton: document.querySelector("#backToAnalysisButton"),
+      deleteAnalysisButton: document.querySelector("#deleteAnalysisButton"),
       releaseGrid: document.querySelector("#releaseGrid"),
       releaseStatus: document.querySelector("#releaseStatus"),
       releaseDateMode: document.querySelector("#releaseDateMode"),
@@ -1260,6 +1331,15 @@
         localOnly: Boolean(item.localOnly)
       }));
       savedState.activeNewsId = savedState.activeNewsId || "";
+      savedState.analyses = (savedState.analyses || structuredClone(initialState.analyses)).map(item => ({
+        id: item.id || crypto.randomUUID(),
+        title: item.title || "Análisis sin título",
+        text: item.text || "",
+        image: item.image || "",
+        createdAt: item.createdAt || new Date().toISOString(),
+        localOnly: Boolean(item.localOnly)
+      }));
+      savedState.activeAnalysisId = savedState.activeAnalysisId || "";
       if (savedState.currentView === "muro") {
         savedState.currentView = "noticias";
       }
@@ -1312,6 +1392,7 @@
       state.games = data.map(fromRemoteGame);
       await loadRemoteProfiles();
       await loadRemoteNews();
+      await loadRemoteAnalyses();
       saveState();
       render();
       showToast("Conectado a Supabase");
@@ -1479,6 +1560,125 @@
       return fromRemoteNews(data);
     }
 
+    async function deleteRemoteNews(id) {
+      if (!remoteReady || !remoteNewsReady || !supabaseClient) {
+        throw new Error("Noticias remotas no disponibles");
+      }
+
+      const { error } = await supabaseClient
+        .from("news")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+    }
+
+    async function loadRemoteAnalyses() {
+      remoteAnalysesReady = false;
+      if (!supabaseClient) return;
+      const localAnalyses = [...state.analyses];
+
+      const { data, error } = await supabaseClient
+        .from("analyses")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        remoteMessage = `${remoteMessage} Análisis locales: falta la tabla analyses.`;
+        return;
+      }
+
+      remoteAnalysesReady = true;
+      const remoteAnalyses = data.map(fromRemoteAnalysis);
+      const remoteIds = new Set(remoteAnalyses.map(item => item.id));
+      const pendingLocalAnalyses = localAnalyses
+        .filter(item => item.id && !remoteIds.has(item.id))
+        .map(item => ({ ...item, localOnly: false }));
+
+      if (pendingLocalAnalyses.length) {
+        const { data: uploaded, error: uploadError } = await supabaseClient
+          .from("analyses")
+          .upsert(pendingLocalAnalyses.map(toRemoteAnalysis), { onConflict: "id" })
+          .select();
+
+        if (uploadError) {
+          remoteAnalysesReady = false;
+          remoteMessage = `${remoteMessage} Hay análisis locales pendientes que no se pudieron subir.`;
+          state.analyses = [...remoteAnalyses, ...pendingLocalAnalyses];
+          return;
+        }
+
+        remoteAnalyses.push(...uploaded.map(fromRemoteAnalysis));
+      }
+
+      state.analyses = remoteAnalyses.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+      remoteMessage = `${remoteMessage} Análisis compartidos: ${state.analyses.length}.`;
+    }
+
+    function fromRemoteAnalysis(row) {
+      return {
+        id: row.id,
+        title: row.title || "Análisis sin título",
+        text: row.body || "",
+        image: row.image || "",
+        createdAt: row.created_at || new Date().toISOString(),
+        localOnly: false
+      };
+    }
+
+    function toRemoteAnalysis(item) {
+      return {
+        id: item.id,
+        title: item.title,
+        body: item.text || "",
+        image: item.image || "",
+        created_at: item.createdAt || new Date().toISOString()
+      };
+    }
+
+    async function createRemoteAnalysis(item) {
+      if (!remoteReady || !remoteAnalysesReady || !supabaseClient) {
+        throw new Error("Análisis remotos no disponibles");
+      }
+
+      const { data, error } = await supabaseClient
+        .from("analyses")
+        .insert(toRemoteAnalysis(item))
+        .select()
+        .single();
+
+      if (error) throw error;
+      return fromRemoteAnalysis(data);
+    }
+
+    async function updateRemoteAnalysis(item) {
+      if (!remoteReady || !remoteAnalysesReady || !supabaseClient) {
+        throw new Error("Análisis remotos no disponibles");
+      }
+
+      const { data, error } = await supabaseClient
+        .from("analyses")
+        .upsert(toRemoteAnalysis(item), { onConflict: "id" })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return fromRemoteAnalysis(data);
+    }
+
+    async function deleteRemoteAnalysis(id) {
+      if (!remoteReady || !remoteAnalysesReady || !supabaseClient) {
+        throw new Error("Análisis remotos no disponibles");
+      }
+
+      const { error } = await supabaseClient
+        .from("analyses")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+    }
+
     function fromRemoteGame(row) {
       return {
         id: row.id,
@@ -1577,6 +1777,23 @@
       return data.publicUrl;
     }
 
+    async function uploadAnalysisImage(file) {
+      if (!remoteReady || !remoteAnalysesReady || !supabaseClient) {
+        return readFile(file);
+      }
+
+      const extension = file.name.split(".").pop() || "png";
+      const path = `analyses/${Date.now()}-${crypto.randomUUID()}.${extension}`;
+      const { error } = await supabaseClient.storage
+        .from(SCREENSHOT_BUCKET)
+        .upload(path, file, { cacheControl: "3600", upsert: false });
+
+      if (error) throw error;
+
+      const { data } = supabaseClient.storage.from(SCREENSHOT_BUCKET).getPublicUrl(path);
+      return data.publicUrl;
+    }
+
     function showToast(message) {
       els.toast.textContent = message;
       els.toast.classList.add("show");
@@ -1607,7 +1824,7 @@
     }
 
     function adminOnlyView(view) {
-      return ["muro", "perfil", "noticia-form"].includes(view);
+      return ["muro", "perfil", "noticia-form", "analisis-form"].includes(view);
     }
 
     function enforceAdminAccess() {
@@ -1620,7 +1837,7 @@
       if (!els.adminStatusText) return;
       els.adminStatusText.textContent = state.isAdmin
         ? "Admin activo: puedes publicar, editar y ver juegos terminados."
-        : "Modo lectura: solo noticias y lanzamientos.";
+        : "Modo lectura: solo noticias, análisis y lanzamientos.";
       els.adminLoginButton.classList.toggle("hidden", state.isAdmin);
       els.adminLogoutButton.classList.toggle("hidden", !state.isAdmin);
       document.querySelectorAll("#view-settings .settings-block").forEach((block, index) => {
@@ -1637,6 +1854,7 @@
       renderStats();
       renderTabs();
       renderNews();
+      renderAnalyses();
       renderFeedFilter();
       renderFeed();
       renderForm();
@@ -1714,16 +1932,18 @@
     function renderTabs() {
       document.querySelectorAll(".tab").forEach(tab => {
         const isNewsArea = ["noticias", "noticia-form", "noticia-detalle"].includes(state.currentView);
-        tab.classList.toggle("active", tab.dataset.view === state.currentView || (tab.dataset.view === "noticias" && isNewsArea));
+        const isAnalysisArea = ["analisis", "analisis-form", "analisis-detalle"].includes(state.currentView);
+        tab.classList.toggle("active", tab.dataset.view === state.currentView || (tab.dataset.view === "noticias" && isNewsArea) || (tab.dataset.view === "analisis" && isAnalysisArea));
         tab.classList.toggle("hidden", tab.dataset.view === "muro" && !state.isAdmin);
       });
-      ["noticias", "noticia-form", "noticia-detalle", "muro", "perfil", "calendario", "settings"].forEach(view => {
+      ["noticias", "noticia-form", "noticia-detalle", "analisis", "analisis-form", "analisis-detalle", "muro", "perfil", "calendario", "settings"].forEach(view => {
         document.querySelector(`#view-${view}`).classList.toggle("hidden", view !== state.currentView);
       });
       const showProfiles = state.isAdmin && ["muro", "perfil"].includes(state.currentView);
       els.profilePanel.classList.toggle("hidden", !showProfiles);
       els.mainLayout.classList.toggle("full-width", !showProfiles);
       els.newNewsButton.classList.toggle("hidden", !state.isAdmin);
+      els.newAnalysisButton.classList.toggle("hidden", !state.isAdmin);
     }
 
     function renderNews() {
@@ -1759,6 +1979,51 @@
 
       const videoId = youtubeId(item.text);
       els.newsDetail.innerHTML = `
+        <div class="news-detail-header">
+          ${item.image ? `<img class="news-hero" src="${item.image}" alt="Imagen de ${escapeHtml(item.title)}">` : ""}
+          <div>
+            <h2>${escapeHtml(item.title)}</h2>
+            <p class="small">${escapeHtml(formatDateTime(item.createdAt))}</p>
+          </div>
+          <p class="news-full-text">${linkifyText(item.text)}</p>
+          ${videoId ? `<iframe class="youtube-frame" src="https://www.youtube.com/embed/${escapeHtml(videoId)}" title="Vídeo de YouTube" allowfullscreen></iframe>` : ""}
+        </div>
+      `;
+    }
+
+    function renderAnalyses() {
+      const analyses = [...state.analyses].sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+      if (!analyses.length) {
+        els.analysisList.innerHTML = `<div class="empty"><p>No hay análisis todavía. Pulsa + para publicar el primero.</p></div>`;
+      } else {
+        els.analysisList.innerHTML = analyses.map(item => `
+          <button class="news-card" type="button" data-analysis="${item.id}">
+            ${state.isAdmin ? `<span class="news-edit-button" data-edit-analysis="${item.id}" title="Editar análisis" aria-label="Editar análisis">✎</span>` : ""}
+            <div class="news-image">
+              ${item.image ? `<img src="${item.image}" alt="Imagen de ${escapeHtml(item.title)}" loading="lazy">` : `<span>${escapeHtml(newsInitials(item.title))}</span>`}
+            </div>
+            <div class="news-body">
+              <p class="news-title">${escapeHtml(item.title)}</p>
+              <p class="small">${escapeHtml(formatDateTime(item.createdAt))}</p>
+              ${item.localOnly ? `<p class="small">Solo en este dispositivo. Revisa Settings y Supabase.</p>` : ""}
+              <p class="news-summary">${escapeHtml(summaryText(item.text, 220))}</p>
+            </div>
+          </button>
+        `).join("");
+      }
+
+      renderAnalysisDetail();
+    }
+
+    function renderAnalysisDetail() {
+      const item = state.analyses.find(analysisItem => analysisItem.id === state.activeAnalysisId);
+      if (!item) {
+        els.analysisDetail.innerHTML = "";
+        return;
+      }
+
+      const videoId = youtubeId(item.text);
+      els.analysisDetail.innerHTML = `
         <div class="news-detail-header">
           ${item.image ? `<img class="news-hero" src="${item.image}" alt="Imagen de ${escapeHtml(item.title)}">` : ""}
           <div>
@@ -1818,10 +2083,29 @@
       state.activeNewsId = newsId;
       const item = state.news.find(newsItem => newsItem.id === newsId);
       els.newsFormTitle.textContent = item ? "Editar noticia" : "Nueva noticia";
+      els.deleteNewsButton.classList.toggle("hidden", !item);
       els.newsTitle.value = item?.title || "";
       els.newsText.value = item?.text || "";
       els.newsImage.value = "";
       state.currentView = "noticia-form";
+      renderTabs();
+    }
+
+    function openAnalysisForm(analysisId = "") {
+      if (!state.isAdmin) {
+        state.currentView = "analisis";
+        showToast("Identifícate como admin en Settings");
+        render();
+        return;
+      }
+      state.activeAnalysisId = analysisId;
+      const item = state.analyses.find(analysisItem => analysisItem.id === analysisId);
+      els.analysisFormTitle.textContent = item ? "Editar análisis" : "Nuevo análisis";
+      els.deleteAnalysisButton.classList.toggle("hidden", !item);
+      els.analysisTitle.value = item?.title || "";
+      els.analysisText.value = item?.text || "";
+      els.analysisImage.value = "";
+      state.currentView = "analisis-form";
       renderTabs();
     }
 
@@ -2050,6 +2334,7 @@
         profiles: Array.isArray(imported.profiles) ? imported.profiles : structuredClone(initialState.profiles),
         games: Array.isArray(imported.games) ? imported.games.map(normalizeImportedGame).filter(Boolean) : [],
         news: Array.isArray(imported.news) ? imported.news : structuredClone(initialState.news),
+        analyses: Array.isArray(imported.analyses) ? imported.analyses : structuredClone(initialState.analyses),
         releases: Array.isArray(imported.releases) ? imported.releases : structuredClone(initialState.releases),
         currentView: "noticias",
         activeProfileId: imported.activeProfileId || "cris"
@@ -2112,6 +2397,51 @@
       state.activeNewsId = item.id;
       state.currentView = "noticia-detalle";
       els.newsForm.reset();
+      render();
+    }
+
+    async function handleAnalysisSubmit(event) {
+      event.preventDefault();
+      if (!state.isAdmin) {
+        showToast("Identifícate como admin en Settings");
+        state.currentView = "analisis";
+        render();
+        return;
+      }
+      const title = els.analysisTitle.value.trim();
+      const text = els.analysisText.value.trim();
+      if (!title || !text) return;
+      const existing = state.analyses.find(item => item.id === state.activeAnalysisId);
+
+      let image = "";
+      try {
+        image = els.analysisImage.files?.[0] ? await uploadAnalysisImage(els.analysisImage.files[0]) : "";
+      } catch {
+        image = els.analysisImage.files?.[0] ? await readFile(els.analysisImage.files[0]) : "";
+      }
+
+      let item = {
+        id: existing?.id || crypto.randomUUID(),
+        title,
+        text,
+        image: image || existing?.image || "",
+        createdAt: existing?.createdAt || new Date().toISOString(),
+        localOnly: false
+      };
+
+      try {
+        item = existing ? await updateRemoteAnalysis(item) : await createRemoteAnalysis(item);
+        state.analyses = [item, ...state.analyses.filter(analysisItem => analysisItem.id !== item.id)];
+        showToast(existing ? "Análisis actualizado" : "Análisis compartido");
+      } catch {
+        item.localOnly = true;
+        state.analyses = [item, ...state.analyses.filter(analysisItem => analysisItem.id !== item.id)];
+        showToast(existing ? "Análisis actualizado en local" : "Análisis local: falta configurar analyses en Supabase");
+      }
+
+      state.activeAnalysisId = item.id;
+      state.currentView = "analisis-detalle";
+      els.analysisForm.reset();
       render();
     }
 
@@ -2471,6 +2801,28 @@
     els.cancelNewsButton.addEventListener("click", () => {
       els.newsForm.reset();
       state.activeNewsId = "";
+      els.deleteNewsButton.classList.add("hidden");
+      state.currentView = "noticias";
+      render();
+    });
+
+    els.deleteNewsButton.addEventListener("click", async () => {
+      const id = state.activeNewsId;
+      const item = state.news.find(newsItem => newsItem.id === id);
+      if (!item) return;
+      if (!confirm(`¿Borrar la noticia "${item.title}"?`)) return;
+
+      try {
+        await deleteRemoteNews(id);
+        showToast("Noticia borrada");
+      } catch {
+        showToast("Noticia borrada en local");
+      }
+
+      state.news = state.news.filter(newsItem => newsItem.id !== id);
+      state.activeNewsId = "";
+      els.newsForm.reset();
+      els.deleteNewsButton.classList.add("hidden");
       state.currentView = "noticias";
       render();
     });
@@ -2481,6 +2833,60 @@
     });
 
     els.newsForm.addEventListener("submit", handleNewsSubmit);
+
+    els.newAnalysisButton.addEventListener("click", () => {
+      openAnalysisForm();
+    });
+
+    els.cancelAnalysisButton.addEventListener("click", () => {
+      els.analysisForm.reset();
+      state.activeAnalysisId = "";
+      els.deleteAnalysisButton.classList.add("hidden");
+      state.currentView = "analisis";
+      render();
+    });
+
+    els.deleteAnalysisButton.addEventListener("click", async () => {
+      const id = state.activeAnalysisId;
+      const item = state.analyses.find(analysisItem => analysisItem.id === id);
+      if (!item) return;
+      if (!confirm(`¿Borrar el análisis "${item.title}"?`)) return;
+
+      try {
+        await deleteRemoteAnalysis(id);
+        showToast("Análisis borrado");
+      } catch {
+        showToast("Análisis borrado en local");
+      }
+
+      state.analyses = state.analyses.filter(analysisItem => analysisItem.id !== id);
+      state.activeAnalysisId = "";
+      els.analysisForm.reset();
+      els.deleteAnalysisButton.classList.add("hidden");
+      state.currentView = "analisis";
+      render();
+    });
+
+    els.backToAnalysisButton.addEventListener("click", () => {
+      state.currentView = "analisis";
+      render();
+    });
+
+    els.analysisForm.addEventListener("submit", handleAnalysisSubmit);
+
+    els.analysisList.addEventListener("click", event => {
+      const edit = event.target.closest("[data-edit-analysis]");
+      if (edit) {
+        openAnalysisForm(edit.dataset.editAnalysis);
+        return;
+      }
+
+      const card = event.target.closest("[data-analysis]");
+      if (!card) return;
+      state.activeAnalysisId = card.dataset.analysis;
+      state.currentView = "analisis-detalle";
+      render();
+    });
 
     els.newsList.addEventListener("click", event => {
       const edit = event.target.closest("[data-edit-news]");
