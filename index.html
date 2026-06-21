@@ -758,8 +758,12 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     const STORAGE_KEY = "partida-cerrada-v1";
+    const SUPABASE_URL = "https://bpjxmanxudmhvobkbxgl.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJwanhtYW54dWRtaHZvYmtieGdsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIwNDk1NjAsImV4cCI6MjA5NzYyNTU2MH0.iu5Ii2vtsaYQCUaG_sSkI343DvOtvNEJvNbWFx_Myf0";
+    const SCREENSHOT_BUCKET = "screenshots";
     const today = new Date().toISOString().slice(0, 10);
 
     const initialState = {
@@ -805,6 +809,8 @@
       lastReleaseSync: "Muestra inicial tomada de Releases.com el 21/06/2026."
     };
 
+    const supabaseClient = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY);
+    let remoteReady = false;
     let state = normalizeState(loadState());
 
     const els = {
@@ -874,6 +880,94 @@
 
     function saveState() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    async function loadRemoteGames() {
+      if (!supabaseClient) {
+        showToast("Supabase no está disponible, usando datos locales");
+        return;
+      }
+
+      const { data, error } = await supabaseClient
+        .from("games")
+        .select("*")
+        .order("finish_date", { ascending: false });
+
+      if (error) {
+        remoteReady = false;
+        showToast("No se pudo conectar con Supabase");
+        return;
+      }
+
+      remoteReady = true;
+      state.games = data.map(fromRemoteGame);
+      saveState();
+      render();
+      showToast("Conectado a Supabase");
+    }
+
+    function fromRemoteGame(row) {
+      return {
+        id: row.id,
+        profileId: row.profile_id,
+        title: row.title,
+        platform: row.platform || "",
+        finishDate: row.finish_date,
+        rating: String(row.rating || "8"),
+        review: row.review || "",
+        screenshots: row.screenshots || []
+      };
+    }
+
+    function toRemoteGame(game) {
+      return {
+        profile_id: game.profileId,
+        title: game.title,
+        platform: game.platform,
+        finish_date: game.finishDate,
+        rating: Number(game.rating || 0),
+        review: game.review,
+        screenshots: game.screenshots || []
+      };
+    }
+
+    async function createRemoteGame(game) {
+      if (!remoteReady || !supabaseClient) return null;
+      const { data, error } = await supabaseClient
+        .from("games")
+        .insert(toRemoteGame(game))
+        .select()
+        .single();
+
+      if (error) throw error;
+      return fromRemoteGame(data);
+    }
+
+    async function deleteRemoteGame(id) {
+      if (!remoteReady || !supabaseClient) return;
+      const { error } = await supabaseClient.from("games").delete().eq("id", id);
+      if (error) throw error;
+    }
+
+    async function uploadScreenshots(files) {
+      const selected = Array.from(files).slice(0, 6);
+      if (!selected.length) return [];
+      if (!remoteReady || !supabaseClient) return readFiles(selected);
+
+      const uploads = selected.map(async file => {
+        const extension = file.name.split(".").pop() || "png";
+        const path = `${Date.now()}-${crypto.randomUUID()}.${extension}`;
+        const { error } = await supabaseClient.storage
+          .from(SCREENSHOT_BUCKET)
+          .upload(path, file, { cacheControl: "3600", upsert: false });
+
+        if (error) throw error;
+
+        const { data } = supabaseClient.storage.from(SCREENSHOT_BUCKET).getPublicUrl(path);
+        return data.publicUrl;
+      });
+
+      return Promise.all(uploads);
     }
 
     function showToast(message) {
@@ -1108,8 +1202,15 @@
 
     async function handleSubmit(event) {
       event.preventDefault();
-      const screenshots = await readFiles(els.screenshots.files);
-      state.games.unshift({
+      let screenshots = [];
+      try {
+        screenshots = await uploadScreenshots(els.screenshots.files);
+      } catch {
+        showToast("No se pudieron subir las capturas");
+        return;
+      }
+
+      const game = {
         id: crypto.randomUUID(),
         profileId: state.activeProfileId,
         title: els.gameTitle.value.trim(),
@@ -1118,7 +1219,16 @@
         rating: els.rating.value,
         review: els.review.value.trim(),
         screenshots
-      });
+      };
+
+      try {
+        const savedGame = await createRemoteGame(game);
+        state.games.unshift(savedGame || game);
+      } catch {
+        state.games.unshift(game);
+        showToast("Guardado localmente, Supabase ha fallado");
+      }
+
       els.gameForm.reset();
       els.finishDate.value = today;
       state.currentView = "muro";
@@ -1126,9 +1236,14 @@
       showToast("Juego publicado");
     }
 
-    function editGame(id) {
+    async function editGame(id) {
       const game = state.games.find(item => item.id === id);
       if (!game) return;
+      try {
+        await deleteRemoteGame(id);
+      } catch {
+        showToast("No se pudo preparar la edición en Supabase");
+      }
       state.activeProfileId = game.profileId;
       state.currentView = "perfil";
       els.gameTitle.value = game.title;
@@ -1141,7 +1256,13 @@
       showToast("Edita y vuelve a publicar");
     }
 
-    function deleteGame(id) {
+    async function deleteGame(id) {
+      try {
+        await deleteRemoteGame(id);
+      } catch {
+        showToast("No se pudo borrar en Supabase");
+        return;
+      }
       state.games = state.games.filter(game => game.id !== id);
       render();
       showToast("Juego eliminado");
@@ -1367,7 +1488,12 @@
       showToast("Datos reiniciados");
     });
 
-    render();
+    async function startApp() {
+      render();
+      await loadRemoteGames();
+    }
+
+    startApp();
   </script>
 </body>
 </html>
