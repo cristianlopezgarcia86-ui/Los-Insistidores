@@ -199,6 +199,26 @@
       background: rgba(255, 255, 255, .035);
     }
 
+    .profile-metrics {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 6px;
+    }
+
+    .profile-chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(19, 232, 255, .16);
+      background: rgba(255, 255, 255, .045);
+      color: var(--muted);
+      font-size: .78rem;
+      font-weight: 800;
+    }
+
     .profile-row.active {
       border-color: var(--brand);
       background: var(--soft);
@@ -248,9 +268,15 @@
 
     .stats {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(2, 1fr);
       gap: 8px;
       margin-top: 14px;
+    }
+
+    .stats-title {
+      grid-column: 1 / -1;
+      color: var(--ink);
+      font-weight: 900;
     }
 
     .stat {
@@ -456,6 +482,7 @@
     }
 
     .news-card {
+      position: relative;
       display: grid;
       grid-template-columns: 180px 1fr;
       gap: 14px;
@@ -467,6 +494,28 @@
       background: rgba(255, 255, 255, .045);
       color: var(--ink);
       text-align: left;
+    }
+
+    .news-edit-button {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(19, 232, 255, .22);
+      background: rgba(5, 9, 20, .62);
+      color: rgba(245, 247, 255, .72);
+      font-size: .9rem;
+      opacity: .68;
+    }
+
+    .news-edit-button:hover {
+      opacity: 1;
+      color: #fff;
+      border-color: rgba(19, 232, 255, .7);
     }
 
     .news-card:hover {
@@ -859,7 +908,7 @@
 
       <section class="panel">
         <div class="panel-inner">
-          <div class="connection-status" id="connectionStatus">
+          <div class="connection-status hidden" id="connectionStatus">
             <span class="connection-dot"></span>
             <span>Comprobando conexión con Supabase...</span>
           </div>
@@ -875,7 +924,7 @@
 
           <section id="view-noticia-form" class="hidden">
             <div class="section-head">
-              <h2>Nueva noticia</h2>
+              <h2 id="newsFormTitle">Nueva noticia</h2>
               <button class="button secondary" id="cancelNewsButton" type="button">Volver</button>
             </div>
             <form id="newsForm">
@@ -1135,6 +1184,7 @@
       newsImage: document.querySelector("#newsImage"),
       newsTitle: document.querySelector("#newsTitle"),
       newsText: document.querySelector("#newsText"),
+      newsFormTitle: document.querySelector("#newsFormTitle"),
       newNewsButton: document.querySelector("#newNewsButton"),
       cancelNewsButton: document.querySelector("#cancelNewsButton"),
       backToNewsButton: document.querySelector("#backToNewsButton"),
@@ -1188,7 +1238,8 @@
         title: item.title || "Noticia sin título",
         text: item.text || "",
         image: item.image || "",
-        createdAt: item.createdAt || new Date().toISOString()
+        createdAt: item.createdAt || new Date().toISOString(),
+        localOnly: Boolean(item.localOnly)
       }));
       savedState.activeNewsId = savedState.activeNewsId || "";
       if (savedState.currentView === "muro") {
@@ -1309,6 +1360,7 @@
     async function loadRemoteNews() {
       remoteNewsReady = false;
       if (!supabaseClient) return;
+      const localNews = [...state.news];
 
       const { data, error } = await supabaseClient
         .from("news")
@@ -1321,11 +1373,30 @@
       }
 
       remoteNewsReady = true;
-      if (data.length) {
-        state.news = data.map(fromRemoteNews);
-      } else {
-        await ensureRemoteNews();
+      const remoteNews = data.map(fromRemoteNews);
+      const remoteIds = new Set(remoteNews.map(item => item.id));
+      const pendingLocalNews = localNews
+        .filter(item => item.id && !remoteIds.has(item.id))
+        .map(item => ({ ...item, localOnly: false }));
+
+      if (pendingLocalNews.length) {
+        const { data: uploaded, error: uploadError } = await supabaseClient
+          .from("news")
+          .upsert(pendingLocalNews.map(toRemoteNews), { onConflict: "id" })
+          .select();
+
+        if (uploadError) {
+          remoteNewsReady = false;
+          remoteMessage = `${remoteMessage} Hay noticias locales pendientes que no se pudieron subir.`;
+          state.news = [...remoteNews, ...pendingLocalNews];
+          return;
+        }
+
+        remoteNews.push(...uploaded.map(fromRemoteNews));
       }
+
+      state.news = remoteNews.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+      remoteMessage = `${remoteMessage} Noticias compartidas: ${state.news.length}.`;
     }
 
     async function ensureRemoteNews() {
@@ -1345,7 +1416,8 @@
         title: row.title || "Noticia sin título",
         text: row.body || "",
         image: row.image || "",
-        createdAt: row.created_at || new Date().toISOString()
+        createdAt: row.created_at || new Date().toISOString(),
+        localOnly: false
       };
     }
 
@@ -1367,6 +1439,21 @@
       const { data, error } = await supabaseClient
         .from("news")
         .insert(toRemoteNews(item))
+        .select()
+        .single();
+
+      if (error) throw error;
+      return fromRemoteNews(data);
+    }
+
+    async function updateRemoteNews(item) {
+      if (!remoteReady || !remoteNewsReady || !supabaseClient) {
+        throw new Error("Noticias remotas no disponibles");
+      }
+
+      const { data, error } = await supabaseClient
+        .from("news")
+        .upsert(toRemoteNews(item), { onConflict: "id" })
         .select()
         .single();
 
@@ -1517,7 +1604,7 @@
 
     function renderProfiles() {
       els.profiles.innerHTML = state.profiles.map(profile => {
-        const total = state.games.filter(game => game.profileId === profile.id).length;
+        const stats = profileStats(profile.id);
         const avatar = profile.avatar
           ? `<img src="${profile.avatar}" alt="Foto de ${escapeHtml(profile.name)}">`
           : initials(profile.name);
@@ -1526,7 +1613,11 @@
             <button class="avatar" style="background:${profile.color}" data-profile="${profile.id}" type="button" title="Elegir perfil">${avatar}</button>
             <div>
               <input class="profile-name" value="${escapeHtml(profile.name)}" data-name="${profile.id}" aria-label="Nombre de perfil">
-              <p class="small">${total} juego${total === 1 ? "" : "s"} terminado${total === 1 ? "" : "s"}</p>
+              <div class="profile-metrics">
+                <span class="profile-chip">${stats.total} juego${stats.total === 1 ? "" : "s"}</span>
+                <span class="profile-chip">${stats.thisYear} en 2026</span>
+                <span class="profile-chip">${stats.avg} media</span>
+              </div>
             </div>
             <button class="icon-button add-game-button" data-add-game="${profile.id}" type="button" title="Añadir juego con ${escapeHtml(profile.name)}" aria-label="Añadir juego con ${escapeHtml(profile.name)}">+</button>
           </div>
@@ -1555,14 +1646,24 @@
     }
 
     function renderStats() {
-      const total = state.games.length;
-      const thisYear = state.games.filter(game => game.finishDate?.startsWith("2026")).length;
-      const avg = total ? (state.games.reduce((sum, game) => sum + Number(game.rating || 0), 0) / total).toFixed(1) : "0";
+      const profile = activeProfile();
+      const stats = profileStats(profile.id);
       els.stats.innerHTML = `
-        <div class="stat"><strong>${total}</strong><span class="small">total</span></div>
-        <div class="stat"><strong>${thisYear}</strong><span class="small">en 2026</span></div>
-        <div class="stat"><strong>${avg}</strong><span class="small">media</span></div>
+        <p class="stats-title">${escapeHtml(profile.name)}</p>
+        <div class="stat"><strong>${stats.total}</strong><span class="small">total</span></div>
+        <div class="stat"><strong>${stats.thisYear}</strong><span class="small">en 2026</span></div>
+        <div class="stat"><strong>${stats.avg}</strong><span class="small">media</span></div>
+        <div class="stat"><strong>${stats.best}</strong><span class="small">mejor nota</span></div>
       `;
+    }
+
+    function profileStats(profileId) {
+      const games = state.games.filter(game => game.profileId === profileId);
+      const total = games.length;
+      const thisYear = games.filter(game => game.finishDate?.startsWith("2026")).length;
+      const avg = total ? (games.reduce((sum, game) => sum + Number(game.rating || 0), 0) / total).toFixed(1) : "0";
+      const best = total ? Math.max(...games.map(game => Number(game.rating || 0))).toFixed(0) : "0";
+      return { total, thisYear, avg, best };
     }
 
     function renderTabs() {
@@ -1585,12 +1686,14 @@
       } else {
         els.newsList.innerHTML = news.map(item => `
           <button class="news-card" type="button" data-news="${item.id}">
+            <span class="news-edit-button" data-edit-news="${item.id}" title="Editar noticia" aria-label="Editar noticia">✎</span>
             <div class="news-image">
               ${item.image ? `<img src="${item.image}" alt="Imagen de ${escapeHtml(item.title)}" loading="lazy">` : `<span>${escapeHtml(newsInitials(item.title))}</span>`}
             </div>
             <div class="news-body">
               <p class="news-title">${escapeHtml(item.title)}</p>
               <p class="small">${escapeHtml(formatDateTime(item.createdAt))}</p>
+              ${item.localOnly ? `<p class="small">Solo en este dispositivo. Revisa Settings y Supabase.</p>` : ""}
               <p class="news-summary">${escapeHtml(summaryText(item.text, 180))}</p>
             </div>
           </button>
@@ -1652,8 +1755,19 @@
       render();
     }
 
+    function openNewsForm(newsId = "") {
+      state.activeNewsId = newsId;
+      const item = state.news.find(newsItem => newsItem.id === newsId);
+      els.newsFormTitle.textContent = item ? "Editar noticia" : "Nueva noticia";
+      els.newsTitle.value = item?.title || "";
+      els.newsText.value = item?.text || "";
+      els.newsImage.value = "";
+      state.currentView = "noticia-form";
+      renderTabs();
+    }
+
     function renderFeedFilter() {
-      const current = els.feedFilter.value || "all";
+      const current = state.currentView === "muro" ? state.activeProfileId : els.feedFilter.value || "all";
       els.feedFilter.innerHTML = `<option value="all">Todos</option>` + state.profiles.map(profile => {
         return `<option value="${profile.id}">${escapeHtml(profile.name)}</option>`;
       }).join("");
@@ -1902,6 +2016,7 @@
       const title = els.newsTitle.value.trim();
       const text = els.newsText.value.trim();
       if (!title || !text) return;
+      const existing = state.news.find(newsItem => newsItem.id === state.activeNewsId);
 
       let image = "";
       try {
@@ -1911,20 +2026,22 @@
       }
 
       let item = {
-        id: crypto.randomUUID(),
+        id: existing?.id || crypto.randomUUID(),
         title,
         text,
-        image,
-        createdAt: new Date().toISOString()
+        image: image || existing?.image || "",
+        createdAt: existing?.createdAt || new Date().toISOString(),
+        localOnly: false
       };
 
       try {
-        item = await createRemoteNews(item);
-        state.news.unshift(item);
-        showToast("Noticia compartida");
+        item = existing ? await updateRemoteNews(item) : await createRemoteNews(item);
+        state.news = [item, ...state.news.filter(newsItem => newsItem.id !== item.id)];
+        showToast(existing ? "Noticia actualizada" : "Noticia compartida");
       } catch {
-        state.news.unshift(item);
-        showToast("Noticia local: falta configurar news en Supabase");
+        item.localOnly = true;
+        state.news = [item, ...state.news.filter(newsItem => newsItem.id !== item.id)];
+        showToast(existing ? "Noticia actualizada en local" : "Noticia local: falta configurar news en Supabase");
       }
 
       state.activeNewsId = item.id;
@@ -2277,12 +2394,12 @@
     });
 
     els.newNewsButton.addEventListener("click", () => {
-      state.currentView = "noticia-form";
-      render();
+      openNewsForm();
     });
 
     els.cancelNewsButton.addEventListener("click", () => {
       els.newsForm.reset();
+      state.activeNewsId = "";
       state.currentView = "noticias";
       render();
     });
@@ -2295,6 +2412,12 @@
     els.newsForm.addEventListener("submit", handleNewsSubmit);
 
     els.newsList.addEventListener("click", event => {
+      const edit = event.target.closest("[data-edit-news]");
+      if (edit) {
+        openNewsForm(edit.dataset.editNews);
+        return;
+      }
+
       const card = event.target.closest("[data-news]");
       if (!card) return;
       state.activeNewsId = card.dataset.news;
@@ -2312,6 +2435,7 @@
       const button = event.target.closest("[data-profile]");
       if (!button) return;
       state.activeProfileId = button.dataset.profile;
+      els.feedFilter.value = state.activeProfileId;
       render();
     });
 
@@ -2348,7 +2472,12 @@
       if (remove) deleteGame(remove.dataset.delete);
     });
 
-    els.feedFilter.addEventListener("change", render);
+    els.feedFilter.addEventListener("change", () => {
+      if (els.feedFilter.value !== "all") {
+        state.activeProfileId = els.feedFilter.value;
+      }
+      render();
+    });
     els.retrySupabaseButton.addEventListener("click", loadRemoteGames);
     els.releaseDateMode.addEventListener("change", render);
     els.releaseWeekFilter.addEventListener("change", render);
