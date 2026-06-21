@@ -1103,6 +1103,7 @@
 
     const supabaseClient = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY);
     let remoteReady = false;
+    let remoteProfilesReady = false;
     let remoteMessage = "Comprobando conexión con Supabase...";
     let state = normalizeState(loadState());
 
@@ -1237,9 +1238,68 @@
       remoteReady = true;
       remoteMessage = `Conectado a Supabase. ${data.length} juego${data.length === 1 ? "" : "s"} compartido${data.length === 1 ? "" : "s"}.`;
       state.games = data.map(fromRemoteGame);
+      await loadRemoteProfiles();
       saveState();
       render();
       showToast("Conectado a Supabase");
+    }
+
+    async function loadRemoteProfiles() {
+      remoteProfilesReady = false;
+      if (!supabaseClient) return;
+
+      const { data, error } = await supabaseClient
+        .from("profiles")
+        .select("*");
+
+      if (error) {
+        remoteMessage = `${remoteMessage} Perfiles locales: falta la tabla profiles.`;
+        return;
+      }
+
+      remoteProfilesReady = true;
+      data.forEach(row => {
+        const profile = state.profiles.find(item => item.id === row.id);
+        if (!profile) return;
+        profile.name = row.name || profile.name;
+        profile.color = row.color || profile.color;
+        profile.avatar = row.avatar || profile.avatar || "";
+      });
+
+      await ensureRemoteProfiles();
+    }
+
+    async function ensureRemoteProfiles() {
+      if (!remoteProfilesReady || !supabaseClient) return;
+      const { error } = await supabaseClient
+        .from("profiles")
+        .upsert(state.profiles.map(toRemoteProfile), { onConflict: "id" });
+      if (error) {
+        remoteProfilesReady = false;
+        remoteMessage = `${remoteMessage} No se pudieron sincronizar perfiles.`;
+      }
+    }
+
+    function toRemoteProfile(profile) {
+      return {
+        id: profile.id,
+        name: profile.name,
+        color: profile.color,
+        avatar: profile.avatar || "",
+        updated_at: new Date().toISOString()
+      };
+    }
+
+    async function saveRemoteProfile(profile) {
+      if (!remoteReady || !remoteProfilesReady || !supabaseClient) {
+        throw new Error("Perfiles remotos no disponibles");
+      }
+
+      const { error } = await supabaseClient
+        .from("profiles")
+        .upsert(toRemoteProfile(profile), { onConflict: "id" });
+
+      if (error) throw error;
     }
 
     function fromRemoteGame(row) {
@@ -1304,6 +1364,23 @@
       });
 
       return Promise.all(uploads);
+    }
+
+    async function uploadProfilePhoto(file, profileId) {
+      if (!remoteReady || !remoteProfilesReady || !supabaseClient) {
+        return readFile(file);
+      }
+
+      const extension = file.name.split(".").pop() || "png";
+      const path = `profiles/${profileId}-${Date.now()}.${extension}`;
+      const { error } = await supabaseClient.storage
+        .from(SCREENSHOT_BUCKET)
+        .upload(path, file, { cacheControl: "3600", upsert: true });
+
+      if (error) throw error;
+
+      const { data } = supabaseClient.storage.from(SCREENSHOT_BUCKET).getPublicUrl(path);
+      return data.publicUrl;
     }
 
     function showToast(message) {
@@ -1668,9 +1745,18 @@
       if (!input || !input.files?.[0]) return;
       const profile = state.profiles.find(item => item.id === input.dataset.avatar);
       if (!profile) return;
-      profile.avatar = await readFile(input.files[0]);
-      render();
-      showToast("Foto de perfil actualizada");
+      try {
+        profile.avatar = await uploadProfilePhoto(input.files[0], profile.id);
+        await saveRemoteProfile(profile);
+        render();
+        showToast(remoteProfilesReady ? "Foto compartida actualizada" : "Foto guardada en este dispositivo");
+      } catch {
+        profile.avatar = await readFile(input.files[0]);
+        render();
+        showToast("Foto local: falta configurar perfiles en Supabase");
+      } finally {
+        input.value = "";
+      }
     }
 
     async function handleBackupImport(event) {
@@ -2135,6 +2221,19 @@
       renderStats();
       renderForm();
       saveState();
+    });
+
+    els.profiles.addEventListener("change", async event => {
+      const input = event.target.closest("[data-name]");
+      if (!input) return;
+      const profile = state.profiles.find(item => item.id === input.dataset.name);
+      if (!profile) return;
+      try {
+        await saveRemoteProfile(profile);
+        showToast("Perfil compartido actualizado");
+      } catch {
+        showToast("Perfil guardado solo en este dispositivo");
+      }
     });
 
     els.settingsProfiles.addEventListener("change", handleAvatarChange);
