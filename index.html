@@ -408,6 +408,14 @@
       font-weight: 900;
     }
 
+    .add-game-button {
+      min-width: 42px;
+      padding: 0 10px;
+      background: linear-gradient(135deg, var(--brand), #7a2cff);
+      color: #fff;
+      box-shadow: 0 0 18px rgba(176, 38, 255, .24);
+    }
+
     .empty {
       min-height: 260px;
       display: grid;
@@ -711,7 +719,6 @@
 
     <nav class="tabs" aria-label="Vistas">
       <button class="tab active" data-view="muro" type="button">Muro</button>
-      <button class="tab" data-view="perfil" type="button">Añadir juego</button>
       <button class="tab" data-view="calendario" type="button">Lanzamientos</button>
       <button class="tab" data-view="settings" type="button">Settings</button>
     </nav>
@@ -793,12 +800,12 @@
             <div class="section-head">
               <div>
                 <h2>Calendario de lanzamientos</h2>
-                <p class="small">Fuente: <a class="source-link" href="https://www.releases.com/calendar/games" target="_blank" rel="noreferrer">Releases.com / Games</a></p>
+                <p class="small">Fuente: <a class="source-link" href="https://rawg.io" target="_blank" rel="noreferrer">RAWG.io</a></p>
               </div>
             </div>
             <div class="calendar-tools">
               <div class="top-actions">
-                <button class="button" id="syncReleases" type="button">Actualizar desde Releases.com</button>
+                <button class="button" id="syncReleases" type="button">Actualizar desde RAWG.io</button>
                 <button class="button secondary" id="loadSample" type="button">Restaurar muestra</button>
               </div>
               <div class="release-filters">
@@ -821,7 +828,7 @@
             </div>
             <div class="calendar-grid" id="releaseGrid"></div>
             <p class="status" id="releaseStatus"></p>
-            <details class="manual-import">
+            <details class="manual-import" hidden>
               <summary>Importar manualmente desde Releases.com</summary>
               <label>
                 Pega aquí el texto o HTML del calendario de Releases.com
@@ -852,6 +859,14 @@
                 </div>
               </div>
               <div class="settings-block">
+                <h3>Importar copia de seguridad</h3>
+                <p class="small">Carga un JSON exportado antes para recuperar perfiles, lanzamientos y juegos en este navegador.</p>
+                <label>
+                  Archivo JSON
+                  <input id="backupImport" type="file" accept="application/json,.json">
+                </label>
+              </div>
+              <div class="settings-block">
                 <h3>Fotos de perfil</h3>
                 <div id="settingsProfiles"></div>
               </div>
@@ -870,6 +885,7 @@
     const SUPABASE_URL = "https://bpjxmanxudmhvobkbxgl.supabase.co";
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJwanhtYW54dWRtaHZvYmtieGdsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIwNDk1NjAsImV4cCI6MjA5NzYyNTU2MH0.iu5Ii2vtsaYQCUaG_sSkI343DvOtvNEJvNbWFx_Myf0";
     const SCREENSHOT_BUCKET = "screenshots";
+    const RAWG_API_KEY = "524d7823d74242bc9d4b689c8a2f412b";
     const today = new Date().toISOString().slice(0, 10);
 
     const initialState = {
@@ -903,16 +919,16 @@
         }
       ],
       releases: [
-        { id: "sample-1", date: "2026-06-19", dayLabel: "Jun 19", title: "EA Sports UFC 6", platforms: "Xbox Series X / PlayStation 5 / PC", hype: "29", url: "https://www.releases.com/p/ea-sports-ufc-6", cover: "", source: "Releases.com" },
-        { id: "sample-2", date: "2026-06-19", dayLabel: "Jun 19", title: "Thank You For Your Application", platforms: "PC", hype: "16", url: "https://www.releases.com/p/thank-you-for-your-application", cover: "", source: "Releases.com" },
-        { id: "sample-3", date: "2026-06-19", dayLabel: "Jun 19", title: "FIRE the First Dreamer", platforms: "PC", hype: "11", url: "https://www.releases.com/p/fire-the-first-dreamer", cover: "", source: "Releases.com" },
-        { id: "sample-4", date: "2026-06-22", dayLabel: "Jun 22", title: "SAND: Raiders of Sophie", platforms: "PC", hype: "97", url: "https://www.releases.com/p/sand-raiders-of-sophie", cover: "", source: "Releases.com" },
-        { id: "sample-5", date: "2026-06-22", dayLabel: "Jun 22", title: "The Drifter", platforms: "Switch / Switch 2", hype: "39", url: "https://www.releases.com/p/the-drifter", cover: "", source: "Releases.com" },
-        { id: "sample-6", date: "2026-06-22", dayLabel: "Jun 22", title: "Besiege: The Broken Beyond", platforms: "PC", hype: "19", url: "https://www.releases.com/p/besiege-the-broken-beyond", cover: "", source: "Releases.com" },
-        { id: "sample-7", date: "2026-06-22", dayLabel: "Jun 22", title: "Dark Scrolls", platforms: "Switch / PC", hype: "19", url: "https://www.releases.com/p/dark-scrolls", cover: "", source: "Releases.com" },
-        { id: "sample-8", date: "2026-06-22", dayLabel: "Jun 22", title: "Pawsome Resort", platforms: "PC (Early Access)", hype: "7", url: "https://www.releases.com/p/pawsome-resort", cover: "", source: "Releases.com" }
+        { id: "sample-1", date: "2026-06-19", dayLabel: "Jun 19", title: "EA Sports UFC 6", platforms: "Xbox Series X / PlayStation 5 / PC", hype: "29", url: "https://rawg.io/search?query=EA%20Sports%20UFC%206", cover: "", source: "RAWG.io" },
+        { id: "sample-2", date: "2026-06-19", dayLabel: "Jun 19", title: "Thank You For Your Application", platforms: "PC", hype: "16", url: "https://rawg.io/search?query=Thank%20You%20For%20Your%20Application", cover: "", source: "RAWG.io" },
+        { id: "sample-3", date: "2026-06-19", dayLabel: "Jun 19", title: "FIRE the First Dreamer", platforms: "PC", hype: "11", url: "https://rawg.io/search?query=FIRE%20the%20First%20Dreamer", cover: "", source: "RAWG.io" },
+        { id: "sample-4", date: "2026-06-22", dayLabel: "Jun 22", title: "SAND: Raiders of Sophie", platforms: "PC", hype: "97", url: "https://rawg.io/search?query=SAND%20Raiders%20of%20Sophie", cover: "", source: "RAWG.io" },
+        { id: "sample-5", date: "2026-06-22", dayLabel: "Jun 22", title: "The Drifter", platforms: "Switch / Switch 2", hype: "39", url: "https://rawg.io/search?query=The%20Drifter", cover: "", source: "RAWG.io" },
+        { id: "sample-6", date: "2026-06-22", dayLabel: "Jun 22", title: "Besiege: The Broken Beyond", platforms: "PC", hype: "19", url: "https://rawg.io/search?query=Besiege%20The%20Broken%20Beyond", cover: "", source: "RAWG.io" },
+        { id: "sample-7", date: "2026-06-22", dayLabel: "Jun 22", title: "Dark Scrolls", platforms: "Switch / PC", hype: "19", url: "https://rawg.io/search?query=Dark%20Scrolls", cover: "", source: "RAWG.io" },
+        { id: "sample-8", date: "2026-06-22", dayLabel: "Jun 22", title: "Pawsome Resort", platforms: "PC (Early Access)", hype: "7", url: "https://rawg.io/search?query=Pawsome%20Resort", cover: "", source: "RAWG.io" }
       ],
-      lastReleaseSync: "Muestra inicial tomada de Releases.com el 21/06/2026."
+      lastReleaseSync: "Muestra inicial. Pulsa actualizar para traer lanzamientos desde RAWG.io."
     };
 
     const supabaseClient = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -947,6 +963,7 @@
       loadSample: document.querySelector("#loadSample"),
       releaseImport: document.querySelector("#releaseImport"),
       parseReleaseImport: document.querySelector("#parseReleaseImport"),
+      backupImport: document.querySelector("#backupImport"),
       toast: document.querySelector("#toast")
     };
 
@@ -983,9 +1000,13 @@
 
       savedState.releases = (savedState.releases || structuredClone(initialState.releases)).map(release => ({
         ...release,
-        url: release.url || `https://www.releases.com/p/${slug(release.title)}`,
-        cover: release.cover || ""
+        url: release.url && !release.url.includes("releases.com") ? release.url : rawgSearchUrl(release.title),
+        cover: release.cover || "",
+        source: release.source === "Releases.com" ? "RAWG.io" : release.source || "RAWG.io"
       }));
+      if (savedState.lastReleaseSync?.includes("Releases.com")) {
+        savedState.lastReleaseSync = "Pulsa actualizar para traer lanzamientos desde RAWG.io.";
+      }
 
       return savedState;
     }
@@ -1147,7 +1168,7 @@
               <input class="profile-name" value="${escapeHtml(profile.name)}" data-name="${profile.id}" aria-label="Nombre de perfil">
               <p class="small">${total} juego${total === 1 ? "" : "s"} terminado${total === 1 ? "" : "s"}</p>
             </div>
-            <button class="icon-button" data-profile="${profile.id}" type="button" title="Elegir perfil">✓</button>
+            <button class="icon-button add-game-button" data-add-game="${profile.id}" type="button" title="Añadir juego con ${escapeHtml(profile.name)}">+ Juego</button>
           </div>
         `;
       }).join("");
@@ -1191,6 +1212,12 @@
       ["muro", "perfil", "calendario", "settings"].forEach(view => {
         document.querySelector(`#view-${view}`).classList.toggle("hidden", view !== state.currentView);
       });
+    }
+
+    function openGameFormForProfile(profileId) {
+      state.activeProfileId = profileId;
+      state.currentView = "perfil";
+      render();
     }
 
     function renderFeedFilter() {
@@ -1269,7 +1296,7 @@
               </div>
               <p class="release-title">${escapeHtml(release.title)}</p>
               <p class="small">${escapeHtml(release.platforms)}</p>
-              <span class="release-link-hint">Ver en Releases.com</span>
+              <span class="release-link-hint">Ver en RAWG.io</span>
             </div>
           </a>
         `).join("");
@@ -1331,7 +1358,11 @@
     }
 
     function releaseUrl(release) {
-      return release.url || `https://www.releases.com/search?q=${encodeURIComponent(release.title)}`;
+      return release.url || rawgSearchUrl(release.title);
+    }
+
+    function rawgSearchUrl(title) {
+      return `https://rawg.io/search?query=${encodeURIComponent(title || "")}`;
     }
 
     function releaseInitials(title) {
@@ -1374,6 +1405,54 @@
       profile.avatar = await readFile(input.files[0]);
       render();
       showToast("Foto de perfil actualizada");
+    }
+
+    async function handleBackupImport(event) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      try {
+        const text = await file.text();
+        const imported = normalizeImportedBackup(JSON.parse(text));
+        state = normalizeState(imported);
+        saveState();
+        render();
+        showToast("Copia importada");
+      } catch {
+        showToast("No se pudo importar el JSON");
+      } finally {
+        event.target.value = "";
+      }
+    }
+
+    function normalizeImportedBackup(imported) {
+      if (!imported || typeof imported !== "object") {
+        throw new Error("Backup inválido");
+      }
+
+      return {
+        ...structuredClone(initialState),
+        ...imported,
+        profiles: Array.isArray(imported.profiles) ? imported.profiles : structuredClone(initialState.profiles),
+        games: Array.isArray(imported.games) ? imported.games.map(normalizeImportedGame).filter(Boolean) : [],
+        releases: Array.isArray(imported.releases) ? imported.releases : structuredClone(initialState.releases),
+        currentView: "muro",
+        activeProfileId: imported.activeProfileId || "cris"
+      };
+    }
+
+    function normalizeImportedGame(game) {
+      if (!game || !game.title || !game.finishDate) return null;
+      return {
+        id: game.id || crypto.randomUUID(),
+        profileId: game.profileId || game.profile_id || "cris",
+        title: String(game.title),
+        platform: game.platform || "",
+        finishDate: game.finishDate || game.finish_date,
+        rating: String(game.rating || "8"),
+        review: game.review || "",
+        screenshots: Array.isArray(game.screenshots) ? game.screenshots : []
+      };
     }
 
     async function handleSubmit(event) {
@@ -1450,6 +1529,76 @@
       state.games = state.games.filter(game => game.id !== id);
       render();
       showToast("Juego eliminado");
+    }
+
+    async function syncRawgReleases() {
+      els.releaseStatus.textContent = "Leyendo RAWG.io...";
+      els.syncReleases.disabled = true;
+
+      try {
+        const start = formatLocalDate(new Date());
+        const end = formatLocalDate(addDays(new Date(), 180));
+        const url = `https://api.rawg.io/api/games?key=${RAWG_API_KEY}&dates=${start},${end}&ordering=released&page_size=40`;
+        const response = await fetchWithTimeout(url);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const payload = await response.json();
+        const parsed = parseRawgGames(payload.results || []);
+        if (!parsed.length) throw new Error("Sin lanzamientos");
+
+        state.releases = parsed;
+        state.lastReleaseSync = `Actualizado desde RAWG.io el ${new Intl.DateTimeFormat("es", { dateStyle: "medium", timeStyle: "short" }).format(new Date())}.`;
+        render();
+        showToast("Calendario actualizado");
+      } catch {
+        state.lastReleaseSync = "No se pudo leer RAWG.io desde este navegador. La muestra local sigue disponible.";
+        render();
+        showToast("No se pudo sincronizar");
+      } finally {
+        els.syncReleases.disabled = false;
+      }
+    }
+
+    function parseRawgGames(games) {
+      return games
+        .filter(game => game.name && game.released)
+        .map((game, index) => {
+          const platforms = (game.platforms || [])
+            .map(item => item.platform?.name)
+            .filter(Boolean)
+            .join(" / ");
+
+          return {
+            id: `rawg-${game.id || slug(game.name)}-${index}`,
+            date: game.released,
+            dayLabel: rawgDayLabel(game.released),
+            title: game.name,
+            platforms: platforms || "Plataformas por confirmar",
+            hype: String(game.added || game.ratings_count || 0),
+            url: game.slug ? `https://rawg.io/games/${game.slug}` : rawgSearchUrl(game.name),
+            cover: game.background_image || "",
+            source: "RAWG.io"
+          };
+        });
+    }
+
+    function rawgDayLabel(dateString) {
+      const date = parseLocalDate(dateString);
+      if (!date) return "Fecha";
+      return new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(date);
+    }
+
+    function addDays(date, days) {
+      const copy = new Date(date);
+      copy.setDate(copy.getDate() + days);
+      return copy;
+    }
+
+    function formatLocalDate(date) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
     }
 
     async function syncReleases() {
@@ -1650,6 +1799,12 @@
     });
 
     els.profiles.addEventListener("click", event => {
+      const addButton = event.target.closest("[data-add-game]");
+      if (addButton) {
+        openGameFormForProfile(addButton.dataset.addGame);
+        return;
+      }
+
       const button = event.target.closest("[data-profile]");
       if (!button) return;
       state.activeProfileId = button.dataset.profile;
@@ -1667,6 +1822,7 @@
     });
 
     els.settingsProfiles.addEventListener("change", handleAvatarChange);
+    els.backupImport.addEventListener("change", handleBackupImport);
 
     els.feed.addEventListener("click", event => {
       const edit = event.target.closest("[data-edit]");
@@ -1682,7 +1838,7 @@
     els.releaseMonthFilter.addEventListener("change", render);
     els.releasePlatformFilter.addEventListener("change", render);
     els.gameForm.addEventListener("submit", handleSubmit);
-    els.syncReleases.addEventListener("click", syncReleases);
+    els.syncReleases.addEventListener("click", syncRawgReleases);
     els.loadSample.addEventListener("click", () => {
       state.releases = structuredClone(initialState.releases);
       state.lastReleaseSync = initialState.lastReleaseSync;
