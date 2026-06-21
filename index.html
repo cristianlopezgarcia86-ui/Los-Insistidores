@@ -191,6 +191,16 @@
       place-items: center;
       color: #fff;
       font-weight: 900;
+      overflow: hidden;
+      background-size: cover;
+      background-position: center;
+    }
+
+    .avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
     }
 
     .profile-name {
@@ -547,6 +557,35 @@
       min-height: 132px;
     }
 
+    .settings-grid {
+      display: grid;
+      gap: 14px;
+    }
+
+    .settings-block {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, .045);
+      padding: 14px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .settings-profile {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 12px;
+      align-items: center;
+      padding: 12px;
+      border: 1px solid rgba(19, 232, 255, .14);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, .035);
+    }
+
+    .settings-profile input[type="file"] {
+      margin-top: 8px;
+    }
+
     .source-link {
       color: var(--brand);
       font-weight: 800;
@@ -629,16 +668,13 @@
       <div class="hero-image" aria-label="Cabecera Los Insistidores">
         <img src="header-logo.png" alt="Logo gamer Los Insistidores">
       </div>
-      <div class="top-actions">
-        <button class="button secondary" id="exportButton" type="button">Exportar datos</button>
-        <button class="button warning" id="resetButton" type="button">Vaciar demo</button>
-      </div>
     </header>
 
     <nav class="tabs" aria-label="Vistas">
       <button class="tab active" data-view="muro" type="button">Muro</button>
       <button class="tab" data-view="perfil" type="button">Añadir juego</button>
       <button class="tab" data-view="calendario" type="button">Lanzamientos</button>
+      <button class="tab" data-view="settings" type="button">Settings</button>
     </nav>
 
     <section class="layout">
@@ -751,6 +787,26 @@
               <button class="button secondary" id="parseReleaseImport" type="button">Importar texto pegado</button>
             </details>
           </section>
+
+          <section id="view-settings" class="hidden">
+            <div class="section-head">
+              <h2>Settings</h2>
+              <span class="small">Datos y perfiles</span>
+            </div>
+            <div class="settings-grid">
+              <div class="settings-block">
+                <h3>Exportar datos</h3>
+                <p class="small">Descarga una copia JSON de los juegos, perfiles y lanzamientos guardados.</p>
+                <div class="top-actions">
+                  <button class="button secondary" id="exportButton" type="button">Exportar datos</button>
+                </div>
+              </div>
+              <div class="settings-block">
+                <h3>Fotos de perfil</h3>
+                <div id="settingsProfiles"></div>
+              </div>
+            </div>
+          </section>
         </div>
       </section>
     </section>
@@ -815,6 +871,7 @@
 
     const els = {
       profiles: document.querySelector("#profiles"),
+      settingsProfiles: document.querySelector("#settingsProfiles"),
       stats: document.querySelector("#stats"),
       feed: document.querySelector("#feed"),
       feedFilter: document.querySelector("#feedFilter"),
@@ -867,6 +924,7 @@
           profile.name = defaults.name;
         }
         profile.color = defaults.color;
+        profile.avatar = profile.avatar || "";
       });
 
       savedState.releases = (savedState.releases || structuredClone(initialState.releases)).map(release => ({
@@ -997,20 +1055,44 @@
       renderFeed();
       renderForm();
       renderReleases();
+      renderSettings();
       saveState();
     }
 
     function renderProfiles() {
       els.profiles.innerHTML = state.profiles.map(profile => {
         const total = state.games.filter(game => game.profileId === profile.id).length;
+        const avatar = profile.avatar
+          ? `<img src="${profile.avatar}" alt="Foto de ${escapeHtml(profile.name)}">`
+          : initials(profile.name);
         return `
           <div class="profile-row ${profile.id === state.activeProfileId ? "active" : ""}">
-            <button class="avatar" style="background:${profile.color}" data-profile="${profile.id}" type="button" title="Elegir perfil">${initials(profile.name)}</button>
+            <button class="avatar" style="background:${profile.color}" data-profile="${profile.id}" type="button" title="Elegir perfil">${avatar}</button>
             <div>
               <input class="profile-name" value="${escapeHtml(profile.name)}" data-name="${profile.id}" aria-label="Nombre de perfil">
               <p class="small">${total} juego${total === 1 ? "" : "s"} terminado${total === 1 ? "" : "s"}</p>
             </div>
             <button class="icon-button" data-profile="${profile.id}" type="button" title="Elegir perfil">✓</button>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function renderSettings() {
+      els.settingsProfiles.innerHTML = state.profiles.map(profile => {
+        const avatar = profile.avatar
+          ? `<img src="${profile.avatar}" alt="Foto de ${escapeHtml(profile.name)}">`
+          : initials(profile.name);
+        return `
+          <div class="settings-profile">
+            <div class="avatar" style="background:${profile.color}">${avatar}</div>
+            <div>
+              <strong>${escapeHtml(profile.name)}</strong>
+              <label>
+                Foto de usuario
+                <input type="file" accept="image/*" data-avatar="${profile.id}">
+              </label>
+            </div>
           </div>
         `;
       }).join("");
@@ -1031,7 +1113,7 @@
       document.querySelectorAll(".tab").forEach(tab => {
         tab.classList.toggle("active", tab.dataset.view === state.currentView);
       });
-      ["muro", "perfil", "calendario"].forEach(view => {
+      ["muro", "perfil", "calendario", "settings"].forEach(view => {
         document.querySelector(`#view-${view}`).classList.toggle("hidden", view !== state.currentView);
       });
     }
@@ -1200,6 +1282,25 @@
       }))).then(items => items.filter(Boolean));
     }
 
+    function readFile(file) {
+      return new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onload = event => resolve(event.target.result);
+        reader.onerror = () => resolve("");
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function handleAvatarChange(event) {
+      const input = event.target.closest("[data-avatar]");
+      if (!input || !input.files?.[0]) return;
+      const profile = state.profiles.find(item => item.id === input.dataset.avatar);
+      if (!profile) return;
+      profile.avatar = await readFile(input.files[0]);
+      render();
+      showToast("Foto de perfil actualizada");
+    }
+
     async function handleSubmit(event) {
       event.preventDefault();
       let screenshots = [];
@@ -1273,20 +1374,26 @@
       els.syncReleases.disabled = true;
       const source = "https://www.releases.com/calendar/games";
       const urls = [
-        source,
-        `https://api.allorigins.win/raw?url=${encodeURIComponent(source)}`
+        { label: "Releases.com", url: source },
+        { label: "AllOrigins", url: `https://api.allorigins.win/raw?url=${encodeURIComponent(source)}` },
+        { label: "Jina Reader", url: `https://r.jina.ai/http://r.jina.ai/http://https://www.releases.com/calendar/games` },
+        { label: "Jina Reader directo", url: `https://r.jina.ai/http://https://www.releases.com/calendar/games` },
+        { label: "Jina Reader HTTP", url: `https://r.jina.ai/http://r.jina.ai/http://http://www.releases.com/calendar/games` },
+        { label: "Jina Reader HTTP directo", url: `https://r.jina.ai/http://http://www.releases.com/calendar/games` },
+        { label: "CodeTabs", url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(source)}` }
       ];
 
       try {
-        for (const url of urls) {
+        for (const route of urls) {
           try {
-            const response = await fetchWithTimeout(url);
+            els.releaseStatus.textContent = `Leyendo Releases.com vía ${route.label}...`;
+            const response = await fetchWithTimeout(route.url);
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const html = await response.text();
             const parsed = parseReleases(html);
             if (parsed.length) {
               state.releases = parsed.slice(0, 30);
-              state.lastReleaseSync = `Actualizado desde Releases.com el ${new Intl.DateTimeFormat("es", { dateStyle: "medium", timeStyle: "short" }).format(new Date())}.`;
+              state.lastReleaseSync = `Actualizado desde Releases.com vía ${route.label} el ${new Intl.DateTimeFormat("es", { dateStyle: "medium", timeStyle: "short" }).format(new Date())}.`;
               render();
               showToast("Calendario actualizado");
               return;
@@ -1296,7 +1403,7 @@
           }
         }
 
-        state.lastReleaseSync = "No se pudo leer Releases.com desde este navegador. La muestra local sigue disponible.";
+        state.lastReleaseSync = "No se pudo leer Releases.com desde este navegador. GitHub Pages puede estar bloqueado por CORS; la muestra local sigue disponible y también puedes usar la importación manual.";
         render();
         showToast("No se pudo sincronizar");
       } finally {
@@ -1304,7 +1411,7 @@
       }
     }
 
-    function fetchWithTimeout(url, timeout = 6500) {
+    function fetchWithTimeout(url, timeout = 9000) {
       const controller = new AbortController();
       const timer = window.setTimeout(() => controller.abort(), timeout);
       return fetch(url, { cache: "no-store", signal: controller.signal })
@@ -1315,13 +1422,18 @@
       const doc = new DOMParser().parseFromString(html, "text/html");
       const releaseMeta = extractReleaseMeta(doc);
       const text = doc.body?.innerText || html.replace(/<[^>]+>/g, "\n");
-      const lines = text.split(/\n+/).map(line => line.trim()).filter(Boolean);
+      const markdownMeta = extractMarkdownReleaseMeta(text);
+      markdownMeta.forEach((value, key) => {
+        const current = releaseMeta.get(key) || {};
+        releaseMeta.set(key, { url: current.url || value.url, cover: current.cover || value.cover });
+      });
+      const lines = text.split(/\n+/).map(cleanReleaseLine).filter(Boolean);
       const monthMap = { Jan: "01", Feb: "02", Mar: "03", Apr: "04", May: "05", Jun: "06", Jul: "07", Aug: "08", Sep: "09", Oct: "10", Nov: "11", Dec: "12" };
       const releases = [];
       let current = null;
 
       for (let index = 0; index < lines.length; index += 1) {
-        const dateMatch = lines[index].match(/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2})(?:st|nd|rd|th)?/);
+        const dateMatch = lines[index].match(/^(?:#+\s*)?(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2})(?:st|nd|rd|th)?/);
         if (dateMatch) {
           const year = new Date().getFullYear();
           current = {
@@ -1334,7 +1446,7 @@
         if (!current || lines[index] !== "Games") continue;
 
         let cursor = index + 1;
-        while (cursor < lines.length && !/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2}/.test(lines[cursor])) {
+        while (cursor < lines.length && !/^(?:#+\s*)?(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2}/.test(lines[cursor])) {
           const title = lines[cursor];
           const platforms = lines[cursor + 1] || "";
           const hype = lines[cursor + 2] || "";
@@ -1360,6 +1472,38 @@
       }
 
       return releases;
+    }
+
+    function cleanReleaseLine(line) {
+      return String(line || "")
+        .replace(/^#+\s*/, "")
+        .replace(/^[-*]\s*/, "")
+        .replace(/!\[[^\]]*]\(([^)]+)\)/g, "")
+        .replace(/\[([^\]]+)]\(([^)]+)\)/g, "$1")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function extractMarkdownReleaseMeta(text) {
+      const meta = new Map();
+      let pendingCover = "";
+      String(text || "").split(/\n+/).forEach(line => {
+        const imageMatch = line.match(/!\[[^\]]*]\(([^)]+)\)/);
+        if (imageMatch) {
+          pendingCover = absoluteReleasesUrl(imageMatch[1]);
+        }
+
+        const linkMatch = line.match(/\[([^\]]{2,})]\((https?:\/\/www\.releases\.com\/p\/[^)]+|\/p\/[^)]+)\)/);
+        if (!linkMatch) return;
+        const title = cleanReleaseLine(linkMatch[1]);
+        if (!title) return;
+        meta.set(normalizeTitle(title), {
+          url: absoluteReleasesUrl(linkMatch[2]),
+          cover: pendingCover
+        });
+        pendingCover = "";
+      });
+      return meta;
     }
 
     function extractReleaseMeta(doc) {
@@ -1439,6 +1583,8 @@
       saveState();
     });
 
+    els.settingsProfiles.addEventListener("change", handleAvatarChange);
+
     els.feed.addEventListener("click", event => {
       const edit = event.target.closest("[data-edit]");
       const remove = event.target.closest("[data-delete]");
@@ -1480,12 +1626,6 @@
       link.download = "partida-cerrada-datos.json";
       link.click();
       URL.revokeObjectURL(link.href);
-    });
-
-    document.querySelector("#resetButton").addEventListener("click", () => {
-      state = structuredClone(initialState);
-      render();
-      showToast("Datos reiniciados");
     });
 
     async function startApp() {
