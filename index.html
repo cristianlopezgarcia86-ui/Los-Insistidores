@@ -1,0 +1,1373 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Juegos terminados</title>
+  <style>
+    :root {
+      --bg: #050914;
+      --panel: #0b1122;
+      --ink: #f5f7ff;
+      --muted: #a8b4cf;
+      --line: rgba(136, 77, 255, .34);
+      --brand: #b026ff;
+      --brand-2: #13e8ff;
+      --soft: rgba(176, 38, 255, .18);
+      --soft-2: rgba(19, 232, 255, .16);
+      --card: rgba(10, 17, 36, .88);
+      --shadow: 0 18px 44px rgba(0, 0, 0, .36);
+      color-scheme: dark;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 17% 8%, rgba(176, 38, 255, .28), transparent 34%),
+        radial-gradient(circle at 86% 18%, rgba(19, 232, 255, .22), transparent 30%),
+        linear-gradient(180deg, #020611 0%, var(--bg) 44%, #080a1a 100%);
+      color: var(--ink);
+      min-height: 100vh;
+    }
+
+    button,
+    input,
+    textarea,
+    select {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      cursor: pointer;
+    }
+
+    .app {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 28px 0 42px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      align-items: start;
+      margin-bottom: 18px;
+    }
+
+    h2,
+    h3,
+    p {
+      margin: 0;
+    }
+
+    .hero-image {
+      overflow: hidden;
+      border-radius: 8px;
+      border: 1px solid rgba(19, 232, 255, .28);
+      background: #030711;
+      box-shadow:
+        0 0 0 1px rgba(176, 38, 255, .2),
+        0 18px 48px rgba(0, 0, 0, .42),
+        0 0 42px rgba(19, 232, 255, .12);
+    }
+
+    .hero-image img {
+      display: block;
+      width: 100%;
+      max-height: 420px;
+      object-fit: cover;
+      object-position: center;
+    }
+
+    .top-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 40px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--brand), #7a2cff);
+      color: #fff;
+      font-weight: 750;
+      box-shadow: 0 8px 22px rgba(176, 38, 255, .22);
+    }
+
+    .button.secondary {
+      background: rgba(11, 17, 34, .86);
+      color: var(--ink);
+      border: 1px solid var(--line);
+      box-shadow: none;
+    }
+
+    .button.warning {
+      background: rgba(255, 72, 196, .14);
+      color: #ffb8ea;
+      border: 1px solid rgba(255, 72, 196, .24);
+      box-shadow: none;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+
+    .tab {
+      padding: 9px 13px;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--line);
+      font-weight: 750;
+    }
+
+    .tab.active {
+      color: #fff;
+      background: var(--brand);
+      border-color: var(--brand);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .panel {
+      background: linear-gradient(180deg, rgba(12, 18, 38, .92), rgba(7, 10, 24, .94));
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .panel-inner {
+      padding: 18px;
+    }
+
+    .profile-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .profile-row {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 11px;
+      align-items: center;
+      padding: 11px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      background: rgba(255, 255, 255, .035);
+    }
+
+    .profile-row.active {
+      border-color: var(--brand);
+      background: var(--soft);
+    }
+
+    .avatar {
+      width: 42px;
+      height: 42px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-weight: 900;
+    }
+
+    .profile-name {
+      width: 100%;
+      border: 1px solid transparent;
+      background: transparent;
+      border-radius: 6px;
+      padding: 5px 6px;
+      color: var(--ink);
+      font-weight: 800;
+    }
+
+    .profile-name:focus {
+      outline: none;
+      border-color: var(--brand);
+      background: rgba(255, 255, 255, .08);
+    }
+
+    .small {
+      color: var(--muted);
+      font-size: .88rem;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .stat {
+      padding: 10px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, .045);
+      border: 1px solid var(--line);
+    }
+
+    .stat strong {
+      display: block;
+      font-size: 1.45rem;
+      line-height: 1;
+    }
+
+    form {
+      display: grid;
+      gap: 12px;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-size: .9rem;
+      font-weight: 700;
+    }
+
+    input,
+    textarea,
+    select {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, .055);
+      color: var(--ink);
+      border-radius: 8px;
+      padding: 10px 11px;
+    }
+
+    select {
+      background-color: #0b1122;
+      color: #f5f7ff;
+      color-scheme: dark;
+    }
+
+    select option {
+      background-color: #0b1122;
+      color: #f5f7ff;
+    }
+
+    select:focus,
+    input:focus,
+    textarea:focus {
+      outline: none;
+      border-color: var(--brand-2);
+      box-shadow: 0 0 0 3px rgba(19, 232, 255, .13);
+    }
+
+    textarea {
+      min-height: 104px;
+      resize: vertical;
+    }
+
+    .two {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .feed {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .game-card {
+      background: rgba(255, 255, 255, .045);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .shot-strip {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+      overflow: hidden;
+      padding: 0;
+      background: rgba(19, 232, 255, .08);
+    }
+
+    .shot-strip:empty {
+      display: none;
+    }
+
+    .shot-strip img {
+      width: 100%;
+      height: clamp(220px, 34vw, 360px);
+      object-fit: cover;
+      object-position: center;
+      display: block;
+      background: #050914;
+    }
+
+    .shot-strip img + img {
+      height: 180px;
+      border-top: 1px solid rgba(19, 232, 255, .16);
+    }
+
+    .game-body {
+      padding: 14px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .game-title-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .game-title {
+      font-size: 1.08rem;
+      line-height: 1.18;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      width: fit-content;
+      border-radius: 999px;
+      padding: 4px 8px;
+      background: var(--soft-2);
+      color: #99f7ff;
+      font-size: .78rem;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+      color: var(--muted);
+      font-size: .86rem;
+    }
+
+    .review {
+      white-space: pre-wrap;
+      line-height: 1.45;
+      color: #e9edff;
+    }
+
+    .icon-button {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      background: rgba(176, 38, 255, .16);
+      color: #dab9ff;
+      font-weight: 900;
+    }
+
+    .empty {
+      min-height: 260px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      color: var(--muted);
+      border: 1px dashed var(--line);
+      border-radius: 8px;
+      padding: 24px;
+      background: rgba(255, 255, 255, .035);
+    }
+
+    .calendar-tools {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .release-filters {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: flex-end;
+    }
+
+    .release-filters select,
+    .release-filters input {
+      width: auto;
+      min-width: 156px;
+    }
+
+    .calendar-grid {
+      display: grid;
+      gap: 10px;
+    }
+
+    .release-card {
+      display: grid;
+      grid-template-columns: 126px 1fr;
+      gap: 12px;
+      align-items: center;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, .045);
+      color: var(--ink);
+      text-decoration: none;
+      transition: border-color .18s ease, transform .18s ease, background .18s ease;
+    }
+
+    .release-card:hover {
+      border-color: rgba(19, 232, 255, .72);
+      background: rgba(19, 232, 255, .07);
+      transform: translateY(-1px);
+    }
+
+    .release-cover {
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid rgba(19, 232, 255, .2);
+      background: linear-gradient(135deg, rgba(176, 38, 255, .28), rgba(19, 232, 255, .18));
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-weight: 950;
+      letter-spacing: 0;
+      text-align: center;
+      padding: 10px;
+    }
+
+    .release-cover img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .release-info {
+      display: grid;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .release-top {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .datebox {
+      display: grid;
+      place-items: center;
+      min-height: 40px;
+      border-radius: 8px;
+      background: linear-gradient(160deg, rgba(176, 38, 255, .24), rgba(19, 232, 255, .18));
+      color: #e8fbff;
+      font-weight: 900;
+      text-align: center;
+      line-height: 1.05;
+      padding: 6px 9px;
+    }
+
+    .datebox span {
+      display: block;
+      font-size: .78rem;
+      text-transform: uppercase;
+    }
+
+    .release-title {
+      font-weight: 900;
+      line-height: 1.2;
+      font-size: 1.02rem;
+    }
+
+    .release-link-hint {
+      color: var(--brand-2);
+      font-size: .84rem;
+      font-weight: 800;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .status {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: .9rem;
+    }
+
+    .manual-import {
+      margin-top: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, .045);
+      padding: 12px;
+    }
+
+    .manual-import summary {
+      cursor: pointer;
+      font-weight: 850;
+      color: var(--brand);
+    }
+
+    .manual-import textarea {
+      margin-top: 10px;
+      min-height: 132px;
+    }
+
+    .source-link {
+      color: var(--brand);
+      font-weight: 800;
+      text-decoration: none;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%);
+      background: var(--ink);
+      color: #fff;
+      border-radius: 999px;
+      padding: 10px 14px;
+      box-shadow: var(--shadow);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .18s ease, transform .18s ease;
+      z-index: 10;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(-4px);
+    }
+
+    @media (max-width: 900px) {
+      header,
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .top-actions {
+        justify-content: flex-start;
+      }
+
+      .feed {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .app {
+        width: min(100% - 20px, 1180px);
+        padding-top: 18px;
+      }
+
+      .two,
+      .stats {
+        grid-template-columns: 1fr;
+      }
+
+      .release-card {
+        grid-template-columns: 96px 1fr;
+      }
+
+      .release-card .badge {
+        grid-column: auto;
+      }
+
+      .release-filters select,
+      .release-filters input {
+        width: 100%;
+      }
+
+      .shot-strip img {
+        height: 230px;
+      }
+
+      .shot-strip img + img {
+        height: 150px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <div class="hero-image" aria-label="Cabecera Los Insistidores">
+        <img src="header-logo.png" alt="Logo gamer Los Insistidores">
+      </div>
+      <div class="top-actions">
+        <button class="button secondary" id="exportButton" type="button">Exportar datos</button>
+        <button class="button warning" id="resetButton" type="button">Vaciar demo</button>
+      </div>
+    </header>
+
+    <nav class="tabs" aria-label="Vistas">
+      <button class="tab active" data-view="muro" type="button">Muro</button>
+      <button class="tab" data-view="perfil" type="button">Añadir juego</button>
+      <button class="tab" data-view="calendario" type="button">Lanzamientos</button>
+    </nav>
+
+    <section class="layout">
+      <aside class="panel">
+        <div class="panel-inner">
+          <div class="section-head">
+            <h2>Perfiles</h2>
+            <span class="small">3 personas</span>
+          </div>
+          <div class="profile-list" id="profiles"></div>
+          <div class="stats" id="stats"></div>
+        </div>
+      </aside>
+
+      <section class="panel">
+        <div class="panel-inner">
+          <section id="view-muro">
+            <div class="section-head">
+              <h2>Juegos terminados</h2>
+              <select id="feedFilter" aria-label="Filtrar muro">
+                <option value="all">Todos</option>
+              </select>
+            </div>
+            <div class="feed" id="feed"></div>
+          </section>
+
+          <section id="view-perfil" class="hidden">
+            <div class="section-head">
+              <h2>Nuevo juego terminado</h2>
+              <span class="badge" id="activeProfileBadge"></span>
+            </div>
+            <form id="gameForm">
+              <label>
+                Juego
+                <input id="gameTitle" required placeholder="Ej. Alan Wake 2">
+              </label>
+              <div class="two">
+                <label>
+                  Plataforma
+                  <input id="gamePlatform" placeholder="PS5, Switch, PC...">
+                </label>
+                <label>
+                  Fecha de fin
+                  <input id="finishDate" type="date" required>
+                </label>
+              </div>
+              <div class="two">
+                <label>
+                  Nota
+                  <select id="rating">
+                    <option value="10">10 - obra redonda</option>
+                    <option value="9">9 - recomendadísimo</option>
+                    <option value="8" selected>8 - muy bueno</option>
+                    <option value="7">7 - bien</option>
+                    <option value="6">6 - correcto</option>
+                    <option value="5">5 - irregular</option>
+                  </select>
+                </label>
+                <label>
+                  Capturas
+                  <input id="screenshots" type="file" accept="image/*" multiple>
+                </label>
+              </div>
+              <label>
+                Reseña
+                <textarea id="review" placeholder="Qué os ha parecido, momento favorito, si lo recomendáis..."></textarea>
+              </label>
+              <button class="button" type="submit">Publicar juego</button>
+            </form>
+          </section>
+
+          <section id="view-calendario" class="hidden">
+            <div class="section-head">
+              <div>
+                <h2>Calendario de lanzamientos</h2>
+                <p class="small">Fuente: <a class="source-link" href="https://www.releases.com/calendar/games" target="_blank" rel="noreferrer">Releases.com / Games</a></p>
+              </div>
+            </div>
+            <div class="calendar-tools">
+              <div class="top-actions">
+                <button class="button" id="syncReleases" type="button">Actualizar desde Releases.com</button>
+                <button class="button secondary" id="loadSample" type="button">Restaurar muestra</button>
+              </div>
+              <div class="release-filters">
+                <select id="releaseDateMode" aria-label="Buscar por fecha">
+                  <option value="all">Todas las fechas</option>
+                  <option value="week">Buscar por semana</option>
+                  <option value="month">Buscar por mes</option>
+                </select>
+                <input id="releaseWeekFilter" type="week" aria-label="Semana de lanzamiento" hidden>
+                <input id="releaseMonthFilter" type="month" aria-label="Mes de lanzamiento" hidden>
+                <select id="releasePlatformFilter" aria-label="Filtrar plataformas">
+                  <option value="all">Todas las plataformas</option>
+                  <option value="PC">PC</option>
+                  <option value="PlayStation 5">PlayStation 5</option>
+                  <option value="Xbox Series X">Xbox Series X</option>
+                  <option value="Switch">Switch</option>
+                  <option value="Switch 2">Switch 2</option>
+                </select>
+              </div>
+            </div>
+            <div class="calendar-grid" id="releaseGrid"></div>
+            <p class="status" id="releaseStatus"></p>
+            <details class="manual-import">
+              <summary>Importar manualmente desde Releases.com</summary>
+              <label>
+                Pega aquí el texto o HTML del calendario de Releases.com
+                <textarea id="releaseImport" placeholder="Copia el contenido de https://www.releases.com/calendar/games y pégalo aquí"></textarea>
+              </label>
+              <button class="button secondary" id="parseReleaseImport" type="button">Importar texto pegado</button>
+            </details>
+          </section>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const STORAGE_KEY = "partida-cerrada-v1";
+    const today = new Date().toISOString().slice(0, 10);
+
+    const initialState = {
+      activeProfileId: "cris",
+      currentView: "muro",
+      profiles: [
+        { id: "cris", name: "Cristian", color: "#b026ff" },
+        { id: "mara", name: "Dani", color: "#13e8ff" },
+        { id: "leo", name: "Javi", color: "#7a2cff" }
+      ],
+      games: [
+        {
+          id: crypto.randomUUID(),
+          profileId: "cris",
+          title: "Hades II",
+          platform: "PC",
+          finishDate: "2026-06-12",
+          rating: "9",
+          review: "Combates rapidísimos, una banda sonora tremenda y esa sensación de decir: una run más y cierro.",
+          screenshots: []
+        },
+        {
+          id: crypto.randomUUID(),
+          profileId: "mara",
+          title: "Lorelei and the Laser Eyes",
+          platform: "Switch",
+          finishDate: "2026-06-03",
+          rating: "8",
+          review: "Un rompecabezas elegante y rarísimo. Se disfruta más con libreta al lado.",
+          screenshots: []
+        }
+      ],
+      releases: [
+        { id: "sample-1", date: "2026-06-19", dayLabel: "Jun 19", title: "EA Sports UFC 6", platforms: "Xbox Series X / PlayStation 5 / PC", hype: "29", url: "https://www.releases.com/p/ea-sports-ufc-6", cover: "", source: "Releases.com" },
+        { id: "sample-2", date: "2026-06-19", dayLabel: "Jun 19", title: "Thank You For Your Application", platforms: "PC", hype: "16", url: "https://www.releases.com/p/thank-you-for-your-application", cover: "", source: "Releases.com" },
+        { id: "sample-3", date: "2026-06-19", dayLabel: "Jun 19", title: "FIRE the First Dreamer", platforms: "PC", hype: "11", url: "https://www.releases.com/p/fire-the-first-dreamer", cover: "", source: "Releases.com" },
+        { id: "sample-4", date: "2026-06-22", dayLabel: "Jun 22", title: "SAND: Raiders of Sophie", platforms: "PC", hype: "97", url: "https://www.releases.com/p/sand-raiders-of-sophie", cover: "", source: "Releases.com" },
+        { id: "sample-5", date: "2026-06-22", dayLabel: "Jun 22", title: "The Drifter", platforms: "Switch / Switch 2", hype: "39", url: "https://www.releases.com/p/the-drifter", cover: "", source: "Releases.com" },
+        { id: "sample-6", date: "2026-06-22", dayLabel: "Jun 22", title: "Besiege: The Broken Beyond", platforms: "PC", hype: "19", url: "https://www.releases.com/p/besiege-the-broken-beyond", cover: "", source: "Releases.com" },
+        { id: "sample-7", date: "2026-06-22", dayLabel: "Jun 22", title: "Dark Scrolls", platforms: "Switch / PC", hype: "19", url: "https://www.releases.com/p/dark-scrolls", cover: "", source: "Releases.com" },
+        { id: "sample-8", date: "2026-06-22", dayLabel: "Jun 22", title: "Pawsome Resort", platforms: "PC (Early Access)", hype: "7", url: "https://www.releases.com/p/pawsome-resort", cover: "", source: "Releases.com" }
+      ],
+      lastReleaseSync: "Muestra inicial tomada de Releases.com el 21/06/2026."
+    };
+
+    let state = normalizeState(loadState());
+
+    const els = {
+      profiles: document.querySelector("#profiles"),
+      stats: document.querySelector("#stats"),
+      feed: document.querySelector("#feed"),
+      feedFilter: document.querySelector("#feedFilter"),
+      activeProfileBadge: document.querySelector("#activeProfileBadge"),
+      gameForm: document.querySelector("#gameForm"),
+      gameTitle: document.querySelector("#gameTitle"),
+      gamePlatform: document.querySelector("#gamePlatform"),
+      finishDate: document.querySelector("#finishDate"),
+      rating: document.querySelector("#rating"),
+      screenshots: document.querySelector("#screenshots"),
+      review: document.querySelector("#review"),
+      releaseGrid: document.querySelector("#releaseGrid"),
+      releaseStatus: document.querySelector("#releaseStatus"),
+      releaseDateMode: document.querySelector("#releaseDateMode"),
+      releaseWeekFilter: document.querySelector("#releaseWeekFilter"),
+      releaseMonthFilter: document.querySelector("#releaseMonthFilter"),
+      releasePlatformFilter: document.querySelector("#releasePlatformFilter"),
+      syncReleases: document.querySelector("#syncReleases"),
+      loadSample: document.querySelector("#loadSample"),
+      releaseImport: document.querySelector("#releaseImport"),
+      parseReleaseImport: document.querySelector("#parseReleaseImport"),
+      toast: document.querySelector("#toast")
+    };
+
+    els.finishDate.value = today;
+    els.releaseWeekFilter.value = getWeekValue(new Date());
+    els.releaseMonthFilter.value = today.slice(0, 7);
+
+    function loadState() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        return saved ? JSON.parse(saved) : structuredClone(initialState);
+      } catch {
+        return structuredClone(initialState);
+      }
+    }
+
+    function normalizeState(savedState) {
+      const profileDefaults = {
+        cris: { name: "Cristian", oldNames: ["Cris"], color: "#b026ff" },
+        mara: { name: "Dani", oldNames: ["Mara"], color: "#13e8ff" },
+        leo: { name: "Javi", oldNames: ["Leo"], color: "#7a2cff" }
+      };
+
+      savedState.profiles = savedState.profiles?.length ? savedState.profiles : structuredClone(initialState.profiles);
+      savedState.profiles.forEach(profile => {
+        const defaults = profileDefaults[profile.id];
+        if (!defaults) return;
+        if (defaults.oldNames.includes(profile.name)) {
+          profile.name = defaults.name;
+        }
+        profile.color = defaults.color;
+      });
+
+      savedState.releases = (savedState.releases || structuredClone(initialState.releases)).map(release => ({
+        ...release,
+        url: release.url || `https://www.releases.com/p/${slug(release.title)}`,
+        cover: release.cover || ""
+      }));
+
+      return savedState;
+    }
+
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function showToast(message) {
+      els.toast.textContent = message;
+      els.toast.classList.add("show");
+      window.setTimeout(() => els.toast.classList.remove("show"), 2200);
+    }
+
+    function activeProfile() {
+      return state.profiles.find(profile => profile.id === state.activeProfileId) || state.profiles[0];
+    }
+
+    function formatDate(dateString) {
+      if (!dateString) return "Sin fecha";
+      return new Intl.DateTimeFormat("es", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(`${dateString}T12:00:00`));
+    }
+
+    function initials(name) {
+      return name.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0].toUpperCase()).join("") || "?";
+    }
+
+    function render() {
+      renderProfiles();
+      renderStats();
+      renderTabs();
+      renderFeedFilter();
+      renderFeed();
+      renderForm();
+      renderReleases();
+      saveState();
+    }
+
+    function renderProfiles() {
+      els.profiles.innerHTML = state.profiles.map(profile => {
+        const total = state.games.filter(game => game.profileId === profile.id).length;
+        return `
+          <div class="profile-row ${profile.id === state.activeProfileId ? "active" : ""}">
+            <button class="avatar" style="background:${profile.color}" data-profile="${profile.id}" type="button" title="Elegir perfil">${initials(profile.name)}</button>
+            <div>
+              <input class="profile-name" value="${escapeHtml(profile.name)}" data-name="${profile.id}" aria-label="Nombre de perfil">
+              <p class="small">${total} juego${total === 1 ? "" : "s"} terminado${total === 1 ? "" : "s"}</p>
+            </div>
+            <button class="icon-button" data-profile="${profile.id}" type="button" title="Elegir perfil">✓</button>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function renderStats() {
+      const total = state.games.length;
+      const thisYear = state.games.filter(game => game.finishDate?.startsWith("2026")).length;
+      const avg = total ? (state.games.reduce((sum, game) => sum + Number(game.rating || 0), 0) / total).toFixed(1) : "0";
+      els.stats.innerHTML = `
+        <div class="stat"><strong>${total}</strong><span class="small">total</span></div>
+        <div class="stat"><strong>${thisYear}</strong><span class="small">en 2026</span></div>
+        <div class="stat"><strong>${avg}</strong><span class="small">media</span></div>
+      `;
+    }
+
+    function renderTabs() {
+      document.querySelectorAll(".tab").forEach(tab => {
+        tab.classList.toggle("active", tab.dataset.view === state.currentView);
+      });
+      ["muro", "perfil", "calendario"].forEach(view => {
+        document.querySelector(`#view-${view}`).classList.toggle("hidden", view !== state.currentView);
+      });
+    }
+
+    function renderFeedFilter() {
+      const current = els.feedFilter.value || "all";
+      els.feedFilter.innerHTML = `<option value="all">Todos</option>` + state.profiles.map(profile => {
+        return `<option value="${profile.id}">${escapeHtml(profile.name)}</option>`;
+      }).join("");
+      els.feedFilter.value = [...state.profiles.map(profile => profile.id), "all"].includes(current) ? current : "all";
+    }
+
+    function renderFeed() {
+      const filter = els.feedFilter.value;
+      const games = state.games
+        .filter(game => filter === "all" || game.profileId === filter)
+        .sort((a, b) => (b.finishDate || "").localeCompare(a.finishDate || ""));
+
+      if (!games.length) {
+        els.feed.innerHTML = `<div class="empty"><p>Aún no hay juegos en esta vista. Publicad el primero y ya empieza la rivalidad amistosa.</p></div>`;
+        return;
+      }
+
+      els.feed.innerHTML = games.map(game => {
+        const profile = state.profiles.find(item => item.id === game.profileId) || state.profiles[0];
+        const shots = (game.screenshots || []).map(src => `<img src="${src}" alt="Captura de ${escapeHtml(game.title)}">`).join("");
+        return `
+          <article class="game-card">
+            <div class="shot-strip">${shots}</div>
+            <div class="game-body">
+              <div class="game-title-row">
+                <div>
+                  <h3 class="game-title">${escapeHtml(game.title)}</h3>
+                  <div class="meta">
+                    <span>${escapeHtml(profile.name)}</span>
+                    <span>·</span>
+                    <span>${formatDate(game.finishDate)}</span>
+                    ${game.platform ? `<span>·</span><span>${escapeHtml(game.platform)}</span>` : ""}
+                  </div>
+                </div>
+                <span class="badge">${escapeHtml(game.rating)}/10</span>
+              </div>
+              ${game.review ? `<p class="review">${escapeHtml(game.review)}</p>` : `<p class="small">Sin reseña todavía.</p>`}
+              <div class="top-actions">
+                <button class="button secondary" data-edit="${game.id}" type="button">Editar</button>
+                <button class="icon-button" data-delete="${game.id}" type="button" title="Eliminar">×</button>
+              </div>
+            </div>
+          </article>
+        `;
+      }).join("");
+    }
+
+    function renderForm() {
+      els.activeProfileBadge.textContent = activeProfile().name;
+    }
+
+    function renderReleases() {
+      const filter = els.releasePlatformFilter.value;
+      renderReleaseDateControls();
+      const releases = state.releases
+        .filter(release => filter === "all" || release.platforms.includes(filter))
+        .filter(releaseMatchesDateFilter)
+        .sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+
+      if (!releases.length) {
+        els.releaseGrid.innerHTML = `<div class="empty"><p>No hay lanzamientos para este filtro.</p></div>`;
+      } else {
+        els.releaseGrid.innerHTML = releases.map(release => `
+          <a class="release-card" href="${escapeHtml(releaseUrl(release))}" target="_blank" rel="noreferrer">
+            <div class="release-cover">
+              ${release.cover ? `<img src="${escapeHtml(release.cover)}" alt="Carátula de ${escapeHtml(release.title)}" loading="lazy">` : `<span>${escapeHtml(releaseInitials(release.title))}</span>`}
+            </div>
+            <div class="release-info">
+              <div class="release-top">
+                <div class="datebox"><span>${escapeHtml(release.dayLabel.split(" ")[0] || "Fecha")}</span>${escapeHtml(release.dayLabel.split(" ").slice(1).join(" ") || "")}</div>
+                <span class="badge">${escapeHtml(release.hype || "0")} siguiendo</span>
+              </div>
+              <p class="release-title">${escapeHtml(release.title)}</p>
+              <p class="small">${escapeHtml(release.platforms)}</p>
+              <span class="release-link-hint">Ver en Releases.com</span>
+            </div>
+          </a>
+        `).join("");
+      }
+
+      els.releaseStatus.textContent = state.lastReleaseSync || "";
+    }
+
+    function renderReleaseDateControls() {
+      const mode = els.releaseDateMode.value;
+      els.releaseWeekFilter.hidden = mode !== "week";
+      els.releaseMonthFilter.hidden = mode !== "month";
+    }
+
+    function releaseMatchesDateFilter(release) {
+      const date = parseLocalDate(release.date);
+      if (!date) return els.releaseDateMode.value === "all";
+
+      if (els.releaseDateMode.value === "week") {
+        const range = weekRange(els.releaseWeekFilter.value);
+        return range ? date >= range.start && date < range.end : true;
+      }
+
+      if (els.releaseDateMode.value === "month") {
+        return release.date?.startsWith(els.releaseMonthFilter.value);
+      }
+
+      return true;
+    }
+
+    function parseLocalDate(value) {
+      if (!value) return null;
+      const [year, month, day] = value.split("-").map(Number);
+      if (!year || !month || !day) return null;
+      return new Date(year, month - 1, day);
+    }
+
+    function getWeekValue(date) {
+      const target = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+      const day = target.getUTCDay() || 7;
+      target.setUTCDate(target.getUTCDate() + 4 - day);
+      const yearStart = new Date(Date.UTC(target.getUTCFullYear(), 0, 1));
+      const week = Math.ceil((((target - yearStart) / 86400000) + 1) / 7);
+      return `${target.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
+    }
+
+    function weekRange(value) {
+      const match = String(value || "").match(/^(\d{4})-W(\d{2})$/);
+      if (!match) return null;
+      const year = Number(match[1]);
+      const week = Number(match[2]);
+      const simple = new Date(year, 0, 1 + (week - 1) * 7);
+      const day = simple.getDay() || 7;
+      const monday = new Date(simple);
+      monday.setDate(simple.getDate() - day + 1);
+      const end = new Date(monday);
+      end.setDate(monday.getDate() + 7);
+      return { start: monday, end };
+    }
+
+    function releaseUrl(release) {
+      return release.url || `https://www.releases.com/search?q=${encodeURIComponent(release.title)}`;
+    }
+
+    function releaseInitials(title) {
+      return String(title || "?").split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0].toUpperCase()).join("");
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function readFiles(files) {
+      const selected = Array.from(files).slice(0, 6);
+      return Promise.all(selected.map(file => new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onload = event => resolve(event.target.result);
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(file);
+      }))).then(items => items.filter(Boolean));
+    }
+
+    async function handleSubmit(event) {
+      event.preventDefault();
+      const screenshots = await readFiles(els.screenshots.files);
+      state.games.unshift({
+        id: crypto.randomUUID(),
+        profileId: state.activeProfileId,
+        title: els.gameTitle.value.trim(),
+        platform: els.gamePlatform.value.trim(),
+        finishDate: els.finishDate.value,
+        rating: els.rating.value,
+        review: els.review.value.trim(),
+        screenshots
+      });
+      els.gameForm.reset();
+      els.finishDate.value = today;
+      state.currentView = "muro";
+      render();
+      showToast("Juego publicado");
+    }
+
+    function editGame(id) {
+      const game = state.games.find(item => item.id === id);
+      if (!game) return;
+      state.activeProfileId = game.profileId;
+      state.currentView = "perfil";
+      els.gameTitle.value = game.title;
+      els.gamePlatform.value = game.platform;
+      els.finishDate.value = game.finishDate;
+      els.rating.value = game.rating;
+      els.review.value = game.review;
+      state.games = state.games.filter(item => item.id !== id);
+      render();
+      showToast("Edita y vuelve a publicar");
+    }
+
+    function deleteGame(id) {
+      state.games = state.games.filter(game => game.id !== id);
+      render();
+      showToast("Juego eliminado");
+    }
+
+    async function syncReleases() {
+      els.releaseStatus.textContent = "Leyendo Releases.com...";
+      els.syncReleases.disabled = true;
+      const source = "https://www.releases.com/calendar/games";
+      const urls = [
+        source,
+        `https://api.allorigins.win/raw?url=${encodeURIComponent(source)}`
+      ];
+
+      try {
+        for (const url of urls) {
+          try {
+            const response = await fetchWithTimeout(url);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const html = await response.text();
+            const parsed = parseReleases(html);
+            if (parsed.length) {
+              state.releases = parsed.slice(0, 30);
+              state.lastReleaseSync = `Actualizado desde Releases.com el ${new Intl.DateTimeFormat("es", { dateStyle: "medium", timeStyle: "short" }).format(new Date())}.`;
+              render();
+              showToast("Calendario actualizado");
+              return;
+            }
+          } catch {
+            // Try the next route; browsers often block direct cross-origin reads.
+          }
+        }
+
+        state.lastReleaseSync = "No se pudo leer Releases.com desde este navegador. La muestra local sigue disponible.";
+        render();
+        showToast("No se pudo sincronizar");
+      } finally {
+        els.syncReleases.disabled = false;
+      }
+    }
+
+    function fetchWithTimeout(url, timeout = 6500) {
+      const controller = new AbortController();
+      const timer = window.setTimeout(() => controller.abort(), timeout);
+      return fetch(url, { cache: "no-store", signal: controller.signal })
+        .finally(() => window.clearTimeout(timer));
+    }
+
+    function parseReleases(html) {
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      const releaseMeta = extractReleaseMeta(doc);
+      const text = doc.body?.innerText || html.replace(/<[^>]+>/g, "\n");
+      const lines = text.split(/\n+/).map(line => line.trim()).filter(Boolean);
+      const monthMap = { Jan: "01", Feb: "02", Mar: "03", Apr: "04", May: "05", Jun: "06", Jul: "07", Aug: "08", Sep: "09", Oct: "10", Nov: "11", Dec: "12" };
+      const releases = [];
+      let current = null;
+
+      for (let index = 0; index < lines.length; index += 1) {
+        const dateMatch = lines[index].match(/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2})(?:st|nd|rd|th)?/);
+        if (dateMatch) {
+          const year = new Date().getFullYear();
+          current = {
+            label: `${dateMatch[1]} ${dateMatch[2]}`,
+            iso: `${year}-${monthMap[dateMatch[1]]}-${String(dateMatch[2]).padStart(2, "0")}`
+          };
+          continue;
+        }
+
+        if (!current || lines[index] !== "Games") continue;
+
+        let cursor = index + 1;
+        while (cursor < lines.length && !/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2}/.test(lines[cursor])) {
+          const title = lines[cursor];
+          const platforms = lines[cursor + 1] || "";
+          const hype = lines[cursor + 2] || "";
+          const looksLikeGame = title && platforms && /PC|PlayStation|Xbox|Switch|iOS|Android|Mac|Linux|Meta Quest|PSVR/i.test(platforms);
+          if (looksLikeGame && /^\d+$/.test(hype)) {
+            const meta = releaseMeta.get(normalizeTitle(title)) || {};
+            releases.push({
+              id: `${current.iso}-${slug(title)}-${releases.length}`,
+              date: current.iso,
+              dayLabel: current.label,
+              title,
+              platforms,
+              hype,
+              url: meta.url || `https://www.releases.com/p/${slug(title)}`,
+              cover: meta.cover || "",
+              source: "Releases.com"
+            });
+            cursor += 3;
+          } else {
+            cursor += 1;
+          }
+        }
+      }
+
+      return releases;
+    }
+
+    function extractReleaseMeta(doc) {
+      const meta = new Map();
+      const links = [...doc.querySelectorAll('a[href*="/p/"]')];
+      links.forEach(link => {
+        const title = link.textContent?.trim();
+        if (!title || title.length < 2) return;
+        const url = absoluteReleasesUrl(link.getAttribute("href"));
+        const cover = nearbyImage(link);
+        const key = normalizeTitle(title);
+        if (!meta.has(key)) {
+          meta.set(key, { url, cover });
+        } else {
+          const current = meta.get(key);
+          meta.set(key, { url: current.url || url, cover: current.cover || cover });
+        }
+      });
+      return meta;
+    }
+
+    function nearbyImage(link) {
+      let node = link;
+      for (let depth = 0; depth < 5 && node; depth += 1) {
+        const image = node.querySelector?.("img");
+        const src = image ? imageSource(image) : "";
+        if (src) return src;
+        node = node.parentElement;
+      }
+
+      const images = [...link.ownerDocument.querySelectorAll("img")];
+      const previous = images.reverse().find(image => image.compareDocumentPosition(link) & 4);
+      return previous ? imageSource(previous) : "";
+    }
+
+    function imageSource(image) {
+      const src = image.getAttribute("src") || image.getAttribute("data-src") || image.getAttribute("data-lazy-src") || image.getAttribute("srcset")?.split(" ")[0] || "";
+      return absoluteReleasesUrl(src);
+    }
+
+    function absoluteReleasesUrl(value) {
+      if (!value) return "";
+      if (value.startsWith("//")) return `https:${value}`;
+      if (value.startsWith("/")) return `https://www.releases.com${value}`;
+      return value;
+    }
+
+    function normalizeTitle(value) {
+      return String(value || "").toLowerCase().replace(/\s+/g, " ").trim();
+    }
+
+    function slug(value) {
+      return String(value).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    }
+
+    document.querySelectorAll(".tab").forEach(tab => {
+      tab.addEventListener("click", () => {
+        state.currentView = tab.dataset.view;
+        render();
+      });
+    });
+
+    els.profiles.addEventListener("click", event => {
+      const button = event.target.closest("[data-profile]");
+      if (!button) return;
+      state.activeProfileId = button.dataset.profile;
+      render();
+    });
+
+    els.profiles.addEventListener("input", event => {
+      const input = event.target.closest("[data-name]");
+      if (!input) return;
+      const profile = state.profiles.find(item => item.id === input.dataset.name);
+      profile.name = input.value || "Perfil";
+      renderStats();
+      renderForm();
+      saveState();
+    });
+
+    els.feed.addEventListener("click", event => {
+      const edit = event.target.closest("[data-edit]");
+      const remove = event.target.closest("[data-delete]");
+      if (edit) editGame(edit.dataset.edit);
+      if (remove) deleteGame(remove.dataset.delete);
+    });
+
+    els.feedFilter.addEventListener("change", render);
+    els.releaseDateMode.addEventListener("change", render);
+    els.releaseWeekFilter.addEventListener("change", render);
+    els.releaseMonthFilter.addEventListener("change", render);
+    els.releasePlatformFilter.addEventListener("change", render);
+    els.gameForm.addEventListener("submit", handleSubmit);
+    els.syncReleases.addEventListener("click", syncReleases);
+    els.loadSample.addEventListener("click", () => {
+      state.releases = structuredClone(initialState.releases);
+      state.lastReleaseSync = initialState.lastReleaseSync;
+      render();
+      showToast("Muestra restaurada");
+    });
+
+    els.parseReleaseImport.addEventListener("click", () => {
+      const parsed = parseReleases(els.releaseImport.value);
+      if (!parsed.length) {
+        showToast("No he encontrado lanzamientos");
+        return;
+      }
+      state.releases = parsed.slice(0, 30);
+      state.lastReleaseSync = `Importado desde texto de Releases.com el ${new Intl.DateTimeFormat("es", { dateStyle: "medium", timeStyle: "short" }).format(new Date())}.`;
+      els.releaseImport.value = "";
+      render();
+      showToast("Calendario importado");
+    });
+
+    document.querySelector("#exportButton").addEventListener("click", () => {
+      const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "partida-cerrada-datos.json";
+      link.click();
+      URL.revokeObjectURL(link.href);
+    });
+
+    document.querySelector("#resetButton").addEventListener("click", () => {
+      state = structuredClone(initialState);
+      render();
+      showToast("Datos reiniciados");
+    });
+
+    render();
+  </script>
+</body>
+</html>
