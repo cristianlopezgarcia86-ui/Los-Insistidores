@@ -520,11 +520,13 @@
 
     .news-hero {
       width: 100%;
-      max-height: 430px;
+      aspect-ratio: 16 / 9;
+      max-height: 460px;
       border-radius: 8px;
       border: 1px solid rgba(19, 232, 255, .2);
       object-fit: contain;
       background: rgba(5, 9, 20, .62);
+      display: block;
     }
 
     .news-full-text {
@@ -1104,6 +1106,7 @@
     const supabaseClient = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY);
     let remoteReady = false;
     let remoteProfilesReady = false;
+    let remoteNewsReady = false;
     let remoteMessage = "Comprobando conexión con Supabase...";
     let state = normalizeState(loadState());
 
@@ -1239,6 +1242,7 @@
       remoteMessage = `Conectado a Supabase. ${data.length} juego${data.length === 1 ? "" : "s"} compartido${data.length === 1 ? "" : "s"}.`;
       state.games = data.map(fromRemoteGame);
       await loadRemoteProfiles();
+      await loadRemoteNews();
       saveState();
       render();
       showToast("Conectado a Supabase");
@@ -1300,6 +1304,74 @@
         .upsert(toRemoteProfile(profile), { onConflict: "id" });
 
       if (error) throw error;
+    }
+
+    async function loadRemoteNews() {
+      remoteNewsReady = false;
+      if (!supabaseClient) return;
+
+      const { data, error } = await supabaseClient
+        .from("news")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        remoteMessage = `${remoteMessage} Noticias locales: falta la tabla news.`;
+        return;
+      }
+
+      remoteNewsReady = true;
+      if (data.length) {
+        state.news = data.map(fromRemoteNews);
+      } else {
+        await ensureRemoteNews();
+      }
+    }
+
+    async function ensureRemoteNews() {
+      if (!remoteNewsReady || !supabaseClient || !state.news.length) return;
+      const { error } = await supabaseClient
+        .from("news")
+        .upsert(state.news.map(toRemoteNews), { onConflict: "id" });
+      if (error) {
+        remoteNewsReady = false;
+        remoteMessage = `${remoteMessage} No se pudieron sincronizar noticias.`;
+      }
+    }
+
+    function fromRemoteNews(row) {
+      return {
+        id: row.id,
+        title: row.title || "Noticia sin título",
+        text: row.body || "",
+        image: row.image || "",
+        createdAt: row.created_at || new Date().toISOString()
+      };
+    }
+
+    function toRemoteNews(item) {
+      return {
+        id: item.id,
+        title: item.title,
+        body: item.text || "",
+        image: item.image || "",
+        created_at: item.createdAt || new Date().toISOString()
+      };
+    }
+
+    async function createRemoteNews(item) {
+      if (!remoteReady || !remoteNewsReady || !supabaseClient) {
+        throw new Error("Noticias remotas no disponibles");
+      }
+
+      const { data, error } = await supabaseClient
+        .from("news")
+        .insert(toRemoteNews(item))
+        .select()
+        .single();
+
+      if (error) throw error;
+      return fromRemoteNews(data);
     }
 
     function fromRemoteGame(row) {
@@ -1376,6 +1448,23 @@
       const { error } = await supabaseClient.storage
         .from(SCREENSHOT_BUCKET)
         .upload(path, file, { cacheControl: "3600", upsert: true });
+
+      if (error) throw error;
+
+      const { data } = supabaseClient.storage.from(SCREENSHOT_BUCKET).getPublicUrl(path);
+      return data.publicUrl;
+    }
+
+    async function uploadNewsImage(file) {
+      if (!remoteReady || !remoteNewsReady || !supabaseClient) {
+        return readFile(file);
+      }
+
+      const extension = file.name.split(".").pop() || "png";
+      const path = `news/${Date.now()}-${crypto.randomUUID()}.${extension}`;
+      const { error } = await supabaseClient.storage
+        .from(SCREENSHOT_BUCKET)
+        .upload(path, file, { cacheControl: "3600", upsert: false });
 
       if (error) throw error;
 
@@ -1814,8 +1903,14 @@
       const text = els.newsText.value.trim();
       if (!title || !text) return;
 
-      const image = els.newsImage.files?.[0] ? await readFile(els.newsImage.files[0]) : "";
-      const item = {
+      let image = "";
+      try {
+        image = els.newsImage.files?.[0] ? await uploadNewsImage(els.newsImage.files[0]) : "";
+      } catch {
+        image = els.newsImage.files?.[0] ? await readFile(els.newsImage.files[0]) : "";
+      }
+
+      let item = {
         id: crypto.randomUUID(),
         title,
         text,
@@ -1823,12 +1918,19 @@
         createdAt: new Date().toISOString()
       };
 
-      state.news.unshift(item);
+      try {
+        item = await createRemoteNews(item);
+        state.news.unshift(item);
+        showToast("Noticia compartida");
+      } catch {
+        state.news.unshift(item);
+        showToast("Noticia local: falta configurar news en Supabase");
+      }
+
       state.activeNewsId = item.id;
       state.currentView = "noticia-detalle";
       els.newsForm.reset();
       render();
-      showToast("Noticia publicada");
     }
 
     async function handleSubmit(event) {
