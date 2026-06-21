@@ -545,6 +545,38 @@
       font-size: .9rem;
     }
 
+    .connection-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, .045);
+      color: var(--muted);
+      padding: 10px 12px;
+      font-size: .9rem;
+      margin-bottom: 14px;
+    }
+
+    .connection-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: #ffcc66;
+      box-shadow: 0 0 14px rgba(255, 204, 102, .35);
+      flex: 0 0 auto;
+    }
+
+    .connection-status.connected .connection-dot {
+      background: #27e879;
+      box-shadow: 0 0 14px rgba(39, 232, 121, .42);
+    }
+
+    .connection-status.error .connection-dot {
+      background: #ff4da6;
+      box-shadow: 0 0 14px rgba(255, 77, 166, .42);
+    }
+
     .manual-import {
       margin-top: 14px;
       border: 1px solid var(--line);
@@ -698,6 +730,10 @@
 
       <section class="panel">
         <div class="panel-inner">
+          <div class="connection-status" id="connectionStatus">
+            <span class="connection-dot"></span>
+            <span>Comprobando conexión con Supabase...</span>
+          </div>
           <section id="view-muro">
             <div class="section-head">
               <h2>Juegos terminados</h2>
@@ -802,6 +838,13 @@
             </div>
             <div class="settings-grid">
               <div class="settings-block">
+                <h3>Conexión compartida</h3>
+                <p class="small" id="settingsConnectionText">Comprobando Supabase...</p>
+                <div class="top-actions">
+                  <button class="button secondary" id="retrySupabaseButton" type="button">Reintentar conexión</button>
+                </div>
+              </div>
+              <div class="settings-block">
                 <h3>Exportar datos</h3>
                 <p class="small">Descarga una copia JSON de los juegos, perfiles y lanzamientos guardados.</p>
                 <div class="top-actions">
@@ -874,11 +917,15 @@
 
     const supabaseClient = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY);
     let remoteReady = false;
+    let remoteMessage = "Comprobando conexión con Supabase...";
     let state = normalizeState(loadState());
 
     const els = {
       profiles: document.querySelector("#profiles"),
       settingsProfiles: document.querySelector("#settingsProfiles"),
+      connectionStatus: document.querySelector("#connectionStatus"),
+      settingsConnectionText: document.querySelector("#settingsConnectionText"),
+      retrySupabaseButton: document.querySelector("#retrySupabaseButton"),
       stats: document.querySelector("#stats"),
       feed: document.querySelector("#feed"),
       feedFilter: document.querySelector("#feedFilter"),
@@ -949,9 +996,16 @@
 
     async function loadRemoteGames() {
       if (!supabaseClient) {
-        showToast("Supabase no está disponible, usando datos locales");
+        remoteReady = false;
+        remoteMessage = "Supabase no está disponible. Revisa que el archivo se haya subido con conexión.";
+        renderConnectionStatus();
+        showToast("Supabase no está disponible");
         return;
       }
+
+      remoteReady = false;
+      remoteMessage = "Comprobando conexión con Supabase...";
+      renderConnectionStatus();
 
       const { data, error } = await supabaseClient
         .from("games")
@@ -960,11 +1014,14 @@
 
       if (error) {
         remoteReady = false;
+        remoteMessage = `No conectado a Supabase: ${error.message}`;
+        renderConnectionStatus();
         showToast("No se pudo conectar con Supabase");
         return;
       }
 
       remoteReady = true;
+      remoteMessage = `Conectado a Supabase. ${data.length} juego${data.length === 1 ? "" : "s"} compartido${data.length === 1 ? "" : "s"}.`;
       state.games = data.map(fromRemoteGame);
       saveState();
       render();
@@ -997,7 +1054,7 @@
     }
 
     async function createRemoteGame(game) {
-      if (!remoteReady || !supabaseClient) return null;
+      if (!remoteReady || !supabaseClient) throw new Error("Supabase no conectado");
       const { data, error } = await supabaseClient
         .from("games")
         .insert(toRemoteGame(game))
@@ -1009,7 +1066,7 @@
     }
 
     async function deleteRemoteGame(id) {
-      if (!remoteReady || !supabaseClient) return;
+      if (!remoteReady || !supabaseClient) throw new Error("Supabase no conectado");
       const { error } = await supabaseClient.from("games").delete().eq("id", id);
       if (error) throw error;
     }
@@ -1041,6 +1098,16 @@
       window.setTimeout(() => els.toast.classList.remove("show"), 2200);
     }
 
+    function renderConnectionStatus() {
+      if (!els.connectionStatus) return;
+      els.connectionStatus.classList.toggle("connected", remoteReady);
+      els.connectionStatus.classList.toggle("error", !remoteReady && !remoteMessage.includes("Comprobando"));
+      els.connectionStatus.querySelector("span:last-child").textContent = remoteMessage;
+      if (els.settingsConnectionText) {
+        els.settingsConnectionText.textContent = remoteMessage;
+      }
+    }
+
     function activeProfile() {
       return state.profiles.find(profile => profile.id === state.activeProfileId) || state.profiles[0];
     }
@@ -1063,6 +1130,7 @@
       renderForm();
       renderReleases();
       renderSettings();
+      renderConnectionStatus();
       saveState();
     }
 
@@ -1310,11 +1378,18 @@
 
     async function handleSubmit(event) {
       event.preventDefault();
+      if (!remoteReady || !supabaseClient) {
+        showToast("No conectado a Supabase: no se ha compartido");
+        state.currentView = "settings";
+        render();
+        return;
+      }
+
       let screenshots = [];
       try {
         screenshots = await uploadScreenshots(els.screenshots.files);
       } catch {
-        showToast("No se pudieron subir las capturas");
+        showToast("No se pudieron subir las capturas a Supabase");
         return;
       }
 
@@ -1331,10 +1406,11 @@
 
       try {
         const savedGame = await createRemoteGame(game);
-        state.games.unshift(savedGame || game);
+        state.games.unshift(savedGame);
       } catch {
-        state.games.unshift(game);
-        showToast("Guardado localmente, Supabase ha fallado");
+        showToast("No se pudo guardar en Supabase");
+        await loadRemoteGames();
+        return;
       }
 
       els.gameForm.reset();
@@ -1600,6 +1676,7 @@
     });
 
     els.feedFilter.addEventListener("change", render);
+    els.retrySupabaseButton.addEventListener("click", loadRemoteGames);
     els.releaseDateMode.addEventListener("change", render);
     els.releaseWeekFilter.addEventListener("change", render);
     els.releaseMonthFilter.addEventListener("change", render);
