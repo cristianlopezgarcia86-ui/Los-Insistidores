@@ -1056,6 +1056,18 @@
             </div>
             <div class="settings-grid">
               <div class="settings-block">
+                <h3>Acceso admin</h3>
+                <p class="small" id="adminStatusText">Modo lectura: solo noticias y lanzamientos.</p>
+                <label>
+                  Clave admin
+                  <input id="adminCodeInput" type="password" autocomplete="current-password" placeholder="Introduce la clave">
+                </label>
+                <div class="top-actions">
+                  <button class="button secondary" id="adminLoginButton" type="button">Entrar como admin</button>
+                  <button class="button secondary hidden" id="adminLogoutButton" type="button">Salir de admin</button>
+                </div>
+              </div>
+              <div class="settings-block">
                 <h3>Conexión compartida</h3>
                 <p class="small" id="settingsConnectionText">Comprobando Supabase...</p>
                 <div class="top-actions">
@@ -1097,12 +1109,14 @@
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJwanhtYW54dWRtaHZvYmtieGdsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIwNDk1NjAsImV4cCI6MjA5NzYyNTU2MH0.iu5Ii2vtsaYQCUaG_sSkI343DvOtvNEJvNbWFx_Myf0";
     const SCREENSHOT_BUCKET = "screenshots";
     const RAWG_API_KEY = "524d7823d74242bc9d4b689c8a2f412b";
+    const ADMIN_CODE = "Demoparacalvos";
     const today = new Date().toISOString().slice(0, 10);
 
     const initialState = {
       activeProfileId: "cris",
       currentView: "noticias",
       activeNewsId: "",
+      isAdmin: false,
       profiles: [
         { id: "cris", name: "Cristian", color: "#b026ff" },
         { id: "mara", name: "Dani", color: "#13e8ff" },
@@ -1167,6 +1181,10 @@
       connectionStatus: document.querySelector("#connectionStatus"),
       settingsConnectionText: document.querySelector("#settingsConnectionText"),
       retrySupabaseButton: document.querySelector("#retrySupabaseButton"),
+      adminStatusText: document.querySelector("#adminStatusText"),
+      adminCodeInput: document.querySelector("#adminCodeInput"),
+      adminLoginButton: document.querySelector("#adminLoginButton"),
+      adminLogoutButton: document.querySelector("#adminLogoutButton"),
       stats: document.querySelector("#stats"),
       feed: document.querySelector("#feed"),
       feedFilter: document.querySelector("#feedFilter"),
@@ -1588,7 +1606,33 @@
       return name.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0].toUpperCase()).join("") || "?";
     }
 
+    function adminOnlyView(view) {
+      return ["muro", "perfil", "noticia-form"].includes(view);
+    }
+
+    function enforceAdminAccess() {
+      if (!state.isAdmin && adminOnlyView(state.currentView)) {
+        state.currentView = "noticias";
+      }
+    }
+
+    function renderAdminAccess() {
+      if (!els.adminStatusText) return;
+      els.adminStatusText.textContent = state.isAdmin
+        ? "Admin activo: puedes publicar, editar y ver juegos terminados."
+        : "Modo lectura: solo noticias y lanzamientos.";
+      els.adminLoginButton.classList.toggle("hidden", state.isAdmin);
+      els.adminLogoutButton.classList.toggle("hidden", !state.isAdmin);
+      document.querySelectorAll("#view-settings .settings-block").forEach((block, index) => {
+        block.classList.toggle("hidden", index > 0 && !state.isAdmin);
+      });
+      if (state.isAdmin) {
+        els.adminCodeInput.value = "";
+      }
+    }
+
     function render() {
+      enforceAdminAccess();
       renderProfiles();
       renderStats();
       renderTabs();
@@ -1598,6 +1642,7 @@
       renderForm();
       renderReleases();
       renderSettings();
+      renderAdminAccess();
       renderConnectionStatus();
       saveState();
     }
@@ -1670,13 +1715,15 @@
       document.querySelectorAll(".tab").forEach(tab => {
         const isNewsArea = ["noticias", "noticia-form", "noticia-detalle"].includes(state.currentView);
         tab.classList.toggle("active", tab.dataset.view === state.currentView || (tab.dataset.view === "noticias" && isNewsArea));
+        tab.classList.toggle("hidden", tab.dataset.view === "muro" && !state.isAdmin);
       });
       ["noticias", "noticia-form", "noticia-detalle", "muro", "perfil", "calendario", "settings"].forEach(view => {
         document.querySelector(`#view-${view}`).classList.toggle("hidden", view !== state.currentView);
       });
-      const showProfiles = ["muro", "perfil"].includes(state.currentView);
+      const showProfiles = state.isAdmin && ["muro", "perfil"].includes(state.currentView);
       els.profilePanel.classList.toggle("hidden", !showProfiles);
       els.mainLayout.classList.toggle("full-width", !showProfiles);
+      els.newNewsButton.classList.toggle("hidden", !state.isAdmin);
     }
 
     function renderNews() {
@@ -1686,7 +1733,7 @@
       } else {
         els.newsList.innerHTML = news.map(item => `
           <button class="news-card" type="button" data-news="${item.id}">
-            <span class="news-edit-button" data-edit-news="${item.id}" title="Editar noticia" aria-label="Editar noticia">✎</span>
+            ${state.isAdmin ? `<span class="news-edit-button" data-edit-news="${item.id}" title="Editar noticia" aria-label="Editar noticia">✎</span>` : ""}
             <div class="news-image">
               ${item.image ? `<img src="${item.image}" alt="Imagen de ${escapeHtml(item.title)}" loading="lazy">` : `<span>${escapeHtml(newsInitials(item.title))}</span>`}
             </div>
@@ -1750,12 +1797,24 @@
     }
 
     function openGameFormForProfile(profileId) {
+      if (!state.isAdmin) {
+        state.currentView = "noticias";
+        showToast("Identifícate como admin en Settings");
+        render();
+        return;
+      }
       state.activeProfileId = profileId;
       state.currentView = "perfil";
       render();
     }
 
     function openNewsForm(newsId = "") {
+      if (!state.isAdmin) {
+        state.currentView = "noticias";
+        showToast("Identifícate como admin en Settings");
+        render();
+        return;
+      }
       state.activeNewsId = newsId;
       const item = state.news.find(newsItem => newsItem.id === newsId);
       els.newsFormTitle.textContent = item ? "Editar noticia" : "Nueva noticia";
@@ -2013,6 +2072,12 @@
 
     async function handleNewsSubmit(event) {
       event.preventDefault();
+      if (!state.isAdmin) {
+        showToast("Identifícate como admin en Settings");
+        state.currentView = "noticias";
+        render();
+        return;
+      }
       const title = els.newsTitle.value.trim();
       const text = els.newsText.value.trim();
       if (!title || !text) return;
@@ -2052,6 +2117,12 @@
 
     async function handleSubmit(event) {
       event.preventDefault();
+      if (!state.isAdmin) {
+        showToast("Identifícate como admin en Settings");
+        state.currentView = "noticias";
+        render();
+        return;
+      }
       if (!remoteReady || !supabaseClient) {
         showToast("No conectado a Supabase: no se ha compartido");
         state.currentView = "settings";
@@ -2423,6 +2494,24 @@
       state.activeNewsId = card.dataset.news;
       state.currentView = "noticia-detalle";
       render();
+    });
+
+    els.adminLoginButton.addEventListener("click", () => {
+      if (els.adminCodeInput.value.trim() !== ADMIN_CODE) {
+        showToast("Clave admin incorrecta");
+        return;
+      }
+      state.isAdmin = true;
+      state.currentView = "noticias";
+      render();
+      showToast("Modo admin activado");
+    });
+
+    els.adminLogoutButton.addEventListener("click", () => {
+      state.isAdmin = false;
+      state.currentView = "noticias";
+      render();
+      showToast("Modo lectura activado");
     });
 
     els.profiles.addEventListener("click", event => {
