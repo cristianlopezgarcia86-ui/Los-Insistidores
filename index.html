@@ -1048,7 +1048,7 @@
 
           <section id="view-perfil" class="hidden">
             <div class="section-head">
-              <h2>Nuevo juego terminado</h2>
+              <h2 id="gameFormTitle">Nuevo juego terminado</h2>
               <span class="badge" id="activeProfileBadge"></span>
             </div>
             <form id="gameForm">
@@ -1087,6 +1087,7 @@
                 Reseña
                 <textarea id="review" placeholder="Qué os ha parecido, momento favorito, si lo recomendáis..."></textarea>
               </label>
+              <button class="button warning hidden" id="deleteGameButton" type="button">Borrar juego</button>
               <button class="button" type="submit">Publicar juego</button>
             </form>
           </section>
@@ -1201,6 +1202,7 @@
       currentView: "noticias",
       activeNewsId: "",
       activeAnalysisId: "",
+      editingGameId: "",
       deletedNewsIds: [],
       deletedAnalysisIds: [],
       isAdmin: false,
@@ -1271,6 +1273,8 @@
       feedFilter: document.querySelector("#feedFilter"),
       activeProfileBadge: document.querySelector("#activeProfileBadge"),
       gameForm: document.querySelector("#gameForm"),
+      gameFormTitle: document.querySelector("#gameFormTitle"),
+      deleteGameButton: document.querySelector("#deleteGameButton"),
       gameTitle: document.querySelector("#gameTitle"),
       gamePlatform: document.querySelector("#gamePlatform"),
       finishDate: document.querySelector("#finishDate"),
@@ -1526,7 +1530,7 @@
 
       remoteNewsReady = true;
       const remoteNews = dedupeContentItems(data.map(fromRemoteNews))
-        .filter(item => !state.deletedNewsIds.includes(item.id) && !isSeedItem(item));
+        .filter(item => !item.deletedAt && !state.deletedNewsIds.includes(item.id) && !isSeedItem(item));
       const remoteIds = new Set(remoteNews.map(item => item.id));
       const remoteKeys = new Set(remoteNews.map(contentKey));
       const pendingLocalNews = localNews
@@ -1571,6 +1575,7 @@
         text: row.body || "",
         image: row.image || "",
         createdAt: row.created_at || new Date().toISOString(),
+        deletedAt: row.deleted_at || "",
         localOnly: false
       };
     }
@@ -1581,7 +1586,8 @@
         title: item.title,
         body: item.text || "",
         image: item.image || "",
-        created_at: item.createdAt || new Date().toISOString()
+        created_at: item.createdAt || new Date().toISOString(),
+        deleted_at: item.deletedAt || null
       };
     }
 
@@ -1622,7 +1628,7 @@
 
       const { error } = await supabaseClient
         .from("news")
-        .delete()
+        .update({ deleted_at: new Date().toISOString() })
         .eq("id", id);
 
       if (error) throw error;
@@ -1645,7 +1651,7 @@
 
       remoteAnalysesReady = true;
       const remoteAnalyses = dedupeContentItems(data.map(fromRemoteAnalysis))
-        .filter(item => !state.deletedAnalysisIds.includes(item.id) && !isSeedItem(item));
+        .filter(item => !item.deletedAt && !state.deletedAnalysisIds.includes(item.id) && !isSeedItem(item));
       const remoteIds = new Set(remoteAnalyses.map(item => item.id));
       const remoteKeys = new Set(remoteAnalyses.map(contentKey));
       const pendingLocalAnalyses = localAnalyses
@@ -1679,6 +1685,7 @@
         text: row.body || "",
         image: row.image || "",
         createdAt: row.created_at || new Date().toISOString(),
+        deletedAt: row.deleted_at || "",
         localOnly: false
       };
     }
@@ -1689,7 +1696,8 @@
         title: item.title,
         body: item.text || "",
         image: item.image || "",
-        created_at: item.createdAt || new Date().toISOString()
+        created_at: item.createdAt || new Date().toISOString(),
+        deleted_at: item.deletedAt || null
       };
     }
 
@@ -1730,7 +1738,7 @@
 
       const { error } = await supabaseClient
         .from("analyses")
-        .delete()
+        .update({ deleted_at: new Date().toISOString() })
         .eq("id", id);
 
       if (error) throw error;
@@ -1766,6 +1774,19 @@
       const { data, error } = await supabaseClient
         .from("games")
         .insert(toRemoteGame(game))
+        .select()
+        .single();
+
+      if (error) throw error;
+      return fromRemoteGame(data);
+    }
+
+    async function updateRemoteGame(game) {
+      if (!remoteReady || !supabaseClient) throw new Error("Supabase no conectado");
+      const { data, error } = await supabaseClient
+        .from("games")
+        .update(toRemoteGame(game))
+        .eq("id", game.id)
         .select()
         .single();
 
@@ -2126,6 +2147,9 @@
         return;
       }
       state.activeProfileId = profileId;
+      state.editingGameId = "";
+      els.gameForm.reset();
+      els.finishDate.value = today;
       state.currentView = "perfil";
       render();
     }
@@ -2207,7 +2231,6 @@
               ${game.review ? `<p class="review">${escapeHtml(game.review)}</p>` : `<p class="small">Sin reseña todavía.</p>`}
               <div class="top-actions">
                 <button class="button secondary" data-edit="${game.id}" type="button">Editar</button>
-                <button class="icon-button" data-delete="${game.id}" type="button" title="Eliminar">×</button>
               </div>
             </div>
           </article>
@@ -2217,6 +2240,9 @@
 
     function renderForm() {
       els.activeProfileBadge.textContent = activeProfile().name;
+      const editing = Boolean(state.editingGameId);
+      els.gameFormTitle.textContent = editing ? "Editar juego terminado" : "Nuevo juego terminado";
+      els.deleteGameButton.classList.toggle("hidden", !editing);
     }
 
     function renderReleases() {
@@ -2589,6 +2615,103 @@
         return;
       }
       state.games = state.games.filter(game => game.id !== id);
+      render();
+      showToast("Juego eliminado");
+    }
+
+    async function handleSubmit(event) {
+      event.preventDefault();
+      if (!state.isAdmin) {
+        showToast("Identificate como admin en Settings");
+        state.currentView = "noticias";
+        render();
+        return;
+      }
+      if (!remoteReady || !supabaseClient) {
+        showToast("No conectado a Supabase: no se ha compartido");
+        state.currentView = "settings";
+        render();
+        return;
+      }
+
+      const isEditing = Boolean(state.editingGameId);
+      const existing = isEditing ? state.games.find(item => item.id === state.editingGameId) : null;
+      let screenshots = existing?.screenshots || [];
+
+      try {
+        if (els.screenshots.files.length) {
+          screenshots = await uploadScreenshots(els.screenshots.files);
+        }
+      } catch {
+        showToast("No se pudieron subir las capturas a Supabase");
+        return;
+      }
+
+      const game = {
+        id: existing?.id || crypto.randomUUID(),
+        profileId: state.activeProfileId,
+        title: els.gameTitle.value.trim(),
+        platform: els.gamePlatform.value.trim(),
+        finishDate: els.finishDate.value,
+        rating: els.rating.value,
+        review: els.review.value.trim(),
+        screenshots
+      };
+
+      try {
+        const savedGame = isEditing ? await updateRemoteGame(game) : await createRemoteGame(game);
+        state.games = isEditing
+          ? state.games.map(item => item.id === savedGame.id ? savedGame : item)
+          : [savedGame, ...state.games];
+      } catch {
+        showToast(isEditing ? "No se pudo actualizar en Supabase" : "No se pudo guardar en Supabase");
+        await loadRemoteGames();
+        return;
+      }
+
+      state.editingGameId = "";
+      els.gameForm.reset();
+      els.finishDate.value = today;
+      state.currentView = "muro";
+      render();
+      showToast(isEditing ? "Juego actualizado" : "Juego publicado");
+    }
+
+    async function editGame(id) {
+      const game = state.games.find(item => item.id === id);
+      if (!game) return;
+      state.activeProfileId = game.profileId;
+      state.editingGameId = id;
+      state.currentView = "perfil";
+      render();
+      els.gameTitle.value = game.title;
+      els.gamePlatform.value = game.platform;
+      els.finishDate.value = game.finishDate;
+      els.rating.value = game.rating;
+      els.review.value = game.review;
+      els.screenshots.value = "";
+      showToast("Editando juego");
+    }
+
+    async function deleteGame(id) {
+      const game = state.games.find(item => item.id === id);
+      if (!game) return;
+      if (!confirm(`Borrar "${game.title}" para todos?`)) return;
+
+      try {
+        await deleteRemoteGame(id);
+      } catch {
+        showToast("No se pudo borrar en Supabase. No se ha quitado para nadie.");
+        return;
+      }
+
+      state.games = state.games.filter(item => item.id !== id);
+      if (state.editingGameId === id) {
+        state.editingGameId = "";
+        els.gameForm.reset();
+        els.finishDate.value = today;
+        state.currentView = "muro";
+      }
       render();
       showToast("Juego eliminado");
     }
@@ -3032,9 +3155,7 @@
 
     els.feed.addEventListener("click", event => {
       const edit = event.target.closest("[data-edit]");
-      const remove = event.target.closest("[data-delete]");
       if (edit) editGame(edit.dataset.edit);
-      if (remove) deleteGame(remove.dataset.delete);
     });
 
     els.feedFilter.addEventListener("change", () => {
@@ -3049,6 +3170,9 @@
     els.releaseMonthFilter.addEventListener("change", render);
     els.releasePlatformFilter.addEventListener("change", render);
     els.gameForm.addEventListener("submit", handleSubmit);
+    els.deleteGameButton.addEventListener("click", () => {
+      if (state.editingGameId) deleteGame(state.editingGameId);
+    });
     els.syncReleases.addEventListener("click", syncRawgReleases);
     els.loadSample.addEventListener("click", () => {
       state.releases = structuredClone(initialState.releases);

@@ -30,13 +30,59 @@ to anon
 using (true)
 with check (true);
 
+create table if not exists public.games (
+  id uuid primary key default gen_random_uuid(),
+  profile_id text not null,
+  title text not null,
+  platform text not null default '',
+  finish_date date,
+  rating numeric not null default 0,
+  review text not null default '',
+  screenshots text[] not null default '{}',
+  created_at timestamptz not null default now()
+);
+
+alter table public.games enable row level security;
+
+drop policy if exists "games_select_all" on public.games;
+create policy "games_select_all"
+on public.games
+for select
+to anon
+using (true);
+
+drop policy if exists "games_insert_all" on public.games;
+create policy "games_insert_all"
+on public.games
+for insert
+to anon
+with check (true);
+
+drop policy if exists "games_update_all" on public.games;
+create policy "games_update_all"
+on public.games
+for update
+to anon
+using (true)
+with check (true);
+
+drop policy if exists "games_delete_all" on public.games;
+create policy "games_delete_all"
+on public.games
+for delete
+to anon
+using (true);
+
 create table if not exists public.news (
   id text primary key,
   title text not null,
   body text not null default '',
   image text not null default '',
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  deleted_at timestamptz
 );
+
+alter table public.news add column if not exists deleted_at timestamptz;
 
 alter table public.news enable row level security;
 
@@ -74,8 +120,11 @@ create table if not exists public.analyses (
   title text not null,
   body text not null default '',
   image text not null default '',
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  deleted_at timestamptz
 );
+
+alter table public.analyses add column if not exists deleted_at timestamptz;
 
 alter table public.analyses enable row level security;
 
@@ -113,5 +162,15 @@ where id = 'seed-news-welcome'
    or lower(title) = 'bienvenidos a los insistidores';
 
 delete from public.analyses
+where id = 'seed-analysis-welcome'
+   or lower(title) in ('primer análisis', 'primer analisis');
+
+update public.news
+set deleted_at = now()
+where id = 'seed-news-welcome'
+   or lower(title) = 'bienvenidos a los insistidores';
+
+update public.analyses
+set deleted_at = now()
 where id = 'seed-analysis-welcome'
    or lower(title) in ('primer análisis', 'primer analisis');
