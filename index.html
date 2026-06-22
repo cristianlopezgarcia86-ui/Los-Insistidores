@@ -705,9 +705,45 @@
     }
 
     .release-link-hint {
+      display: inline-flex;
+      width: fit-content;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 9px;
+      border-radius: 999px;
+      border: 1px solid rgba(19, 232, 255, .22);
+      background: rgba(19, 232, 255, .08);
       color: var(--brand-2);
       font-size: .84rem;
       font-weight: 800;
+      text-decoration: none;
+    }
+
+    .release-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .release-video-link {
+      width: 32px;
+      height: 32px;
+      border-radius: 999px;
+      display: inline-grid;
+      place-items: center;
+      border: 1px solid rgba(255, 77, 166, .34);
+      background: rgba(255, 77, 166, .14);
+      color: #ffd6ee;
+      text-decoration: none;
+      font-size: .86rem;
+      font-weight: 950;
+      line-height: 1;
+    }
+
+    .release-video-link:hover {
+      border-color: rgba(255, 77, 166, .75);
+      background: rgba(255, 77, 166, .22);
+      color: #fff;
     }
 
     .hidden {
@@ -1165,6 +1201,8 @@
       currentView: "noticias",
       activeNewsId: "",
       activeAnalysisId: "",
+      deletedNewsIds: [],
+      deletedAnalysisIds: [],
       isAdmin: false,
       profiles: [
         { id: "cris", name: "Cristian", color: "#b026ff" },
@@ -1195,7 +1233,7 @@
       ],
       news: [
         {
-          id: crypto.randomUUID(),
+          id: "seed-news-welcome",
           title: "Bienvenidos a Los Insistidores",
           text: "Este será el tablón para dejar noticias, avisos, vídeos y cualquier publicación que queráis destacar para el grupo.",
           image: "",
@@ -1204,7 +1242,7 @@
       ],
       analyses: [
         {
-          id: crypto.randomUUID(),
+          id: "seed-analysis-welcome",
           title: "Primer análisis",
           text: "Aquí podréis publicar análisis completos de juegos, con imagen de cabecera, texto y vídeos de YouTube integrados.",
           image: "",
@@ -1331,6 +1369,9 @@
         localOnly: Boolean(item.localOnly)
       }));
       savedState.activeNewsId = savedState.activeNewsId || "";
+      savedState.deletedNewsIds = Array.isArray(savedState.deletedNewsIds) ? savedState.deletedNewsIds : [];
+      savedState.news = dedupeContentItems(savedState.news)
+        .filter(item => !savedState.deletedNewsIds.includes(item.id));
       savedState.analyses = (savedState.analyses || structuredClone(initialState.analyses)).map(item => ({
         id: item.id || crypto.randomUUID(),
         title: item.title || "Análisis sin título",
@@ -1340,6 +1381,9 @@
         localOnly: Boolean(item.localOnly)
       }));
       savedState.activeAnalysisId = savedState.activeAnalysisId || "";
+      savedState.deletedAnalysisIds = Array.isArray(savedState.deletedAnalysisIds) ? savedState.deletedAnalysisIds : [];
+      savedState.analyses = dedupeContentItems(savedState.analyses)
+        .filter(item => !savedState.deletedAnalysisIds.includes(item.id));
       if (savedState.currentView === "muro") {
         savedState.currentView = "noticias";
       }
@@ -1359,6 +1403,27 @@
 
     function saveState() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function contentKey(item) {
+      return `${String(item.title || "").toLowerCase().trim()}|${String(item.text || "").toLowerCase().replace(/\s+/g, " ").trim()}`;
+    }
+
+    function dedupeContentItems(items) {
+      const seenIds = new Set();
+      const seenContent = new Set();
+      return (items || []).filter(item => {
+        if (!item?.id) return false;
+        const key = contentKey(item);
+        if (seenIds.has(item.id) || seenContent.has(key)) return false;
+        seenIds.add(item.id);
+        seenContent.add(key);
+        return true;
+      });
+    }
+
+    function isSeedItem(item) {
+      return item?.id === "seed-news-welcome" || item?.id === "seed-analysis-welcome";
     }
 
     async function loadRemoteGames() {
@@ -1472,10 +1537,12 @@
       }
 
       remoteNewsReady = true;
-      const remoteNews = data.map(fromRemoteNews);
+      const remoteNews = dedupeContentItems(data.map(fromRemoteNews))
+        .filter(item => !state.deletedNewsIds.includes(item.id));
       const remoteIds = new Set(remoteNews.map(item => item.id));
+      const remoteKeys = new Set(remoteNews.map(contentKey));
       const pendingLocalNews = localNews
-        .filter(item => item.id && !remoteIds.has(item.id))
+        .filter(item => item.id && !remoteIds.has(item.id) && !remoteKeys.has(contentKey(item)) && !isSeedItem(item) && !state.deletedNewsIds.includes(item.id))
         .map(item => ({ ...item, localOnly: false }));
 
       if (pendingLocalNews.length) {
@@ -1494,7 +1561,7 @@
         remoteNews.push(...uploaded.map(fromRemoteNews));
       }
 
-      state.news = remoteNews.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+      state.news = dedupeContentItems(remoteNews).sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
       remoteMessage = `${remoteMessage} Noticias compartidas: ${state.news.length}.`;
     }
 
@@ -1589,10 +1656,12 @@
       }
 
       remoteAnalysesReady = true;
-      const remoteAnalyses = data.map(fromRemoteAnalysis);
+      const remoteAnalyses = dedupeContentItems(data.map(fromRemoteAnalysis))
+        .filter(item => !state.deletedAnalysisIds.includes(item.id));
       const remoteIds = new Set(remoteAnalyses.map(item => item.id));
+      const remoteKeys = new Set(remoteAnalyses.map(contentKey));
       const pendingLocalAnalyses = localAnalyses
-        .filter(item => item.id && !remoteIds.has(item.id))
+        .filter(item => item.id && !remoteIds.has(item.id) && !remoteKeys.has(contentKey(item)) && !isSeedItem(item) && !state.deletedAnalysisIds.includes(item.id))
         .map(item => ({ ...item, localOnly: false }));
 
       if (pendingLocalAnalyses.length) {
@@ -1611,7 +1680,7 @@
         remoteAnalyses.push(...uploaded.map(fromRemoteAnalysis));
       }
 
-      state.analyses = remoteAnalyses.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+      state.analyses = dedupeContentItems(remoteAnalyses).sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
       remoteMessage = `${remoteMessage} Análisis compartidos: ${state.analyses.length}.`;
     }
 
@@ -2174,7 +2243,7 @@
         els.releaseGrid.innerHTML = `<div class="empty"><p>No hay lanzamientos para este filtro.</p></div>`;
       } else {
         els.releaseGrid.innerHTML = releases.map(release => `
-          <a class="release-card" href="${escapeHtml(releaseUrl(release))}" target="_blank" rel="noreferrer">
+          <article class="release-card">
             <div class="release-cover">
               ${release.cover ? `<img src="${escapeHtml(release.cover)}" alt="Carátula de ${escapeHtml(release.title)}" loading="lazy">` : `<span>${escapeHtml(releaseInitials(release.title))}</span>`}
             </div>
@@ -2185,9 +2254,12 @@
               </div>
               <p class="release-title">${escapeHtml(release.title)}</p>
               <p class="small">${escapeHtml(release.platforms)}</p>
-              <span class="release-link-hint">Ver en RAWG.io</span>
+              <div class="release-actions">
+                <a class="release-link-hint" href="${escapeHtml(releaseUrl(release))}" target="_blank" rel="noreferrer">RAWG</a>
+                <a class="release-video-link" href="${escapeHtml(youtubeTrailerUrl(release.title))}" target="_blank" rel="noreferrer" title="Buscar tráiler en YouTube" aria-label="Buscar tráiler de ${escapeHtml(release.title)} en YouTube">▶</a>
+              </div>
             </div>
-          </a>
+          </article>
         `).join("");
       }
 
@@ -2252,6 +2324,10 @@
 
     function rawgSearchUrl(title) {
       return `https://rawg.io/search?query=${encodeURIComponent(title || "")}`;
+    }
+
+    function youtubeTrailerUrl(title) {
+      return `https://www.youtube.com/results?search_query=${encodeURIComponent(`${title || ""} trailer gameplay`)}`;
     }
 
     function releaseInitials(title) {
@@ -2335,6 +2411,8 @@
         games: Array.isArray(imported.games) ? imported.games.map(normalizeImportedGame).filter(Boolean) : [],
         news: Array.isArray(imported.news) ? imported.news : structuredClone(initialState.news),
         analyses: Array.isArray(imported.analyses) ? imported.analyses : structuredClone(initialState.analyses),
+        deletedNewsIds: Array.isArray(imported.deletedNewsIds) ? imported.deletedNewsIds : [],
+        deletedAnalysisIds: Array.isArray(imported.deletedAnalysisIds) ? imported.deletedAnalysisIds : [],
         releases: Array.isArray(imported.releases) ? imported.releases : structuredClone(initialState.releases),
         currentView: "noticias",
         activeProfileId: imported.activeProfileId || "cris"
@@ -2814,8 +2892,10 @@
 
       try {
         await deleteRemoteNews(id);
+        state.deletedNewsIds = [...new Set([...(state.deletedNewsIds || []), id])];
         showToast("Noticia borrada");
       } catch {
+        state.deletedNewsIds = [...new Set([...(state.deletedNewsIds || []), id])];
         showToast("Noticia borrada en local");
       }
 
@@ -2854,8 +2934,10 @@
 
       try {
         await deleteRemoteAnalysis(id);
+        state.deletedAnalysisIds = [...new Set([...(state.deletedAnalysisIds || []), id])];
         showToast("Análisis borrado");
       } catch {
+        state.deletedAnalysisIds = [...new Set([...(state.deletedAnalysisIds || []), id])];
         showToast("Análisis borrado en local");
       }
 
