@@ -527,6 +527,7 @@
     .news-image {
       width: 100%;
       aspect-ratio: 16 / 9;
+      min-height: 112px;
       border-radius: 8px;
       overflow: hidden;
       border: 1px solid rgba(19, 232, 255, .2);
@@ -540,8 +541,8 @@
     .news-image img {
       width: 100%;
       height: 100%;
-      object-fit: contain;
-      background: rgba(5, 9, 20, .62);
+      object-fit: cover;
+      object-position: center;
       display: block;
     }
 
@@ -563,6 +564,55 @@
       line-height: 1.42;
     }
 
+    .impact-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: .88rem;
+      font-weight: 800;
+    }
+
+    .impact-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      min-height: 28px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      border: 1px solid rgba(19, 232, 255, .16);
+      background: rgba(255, 255, 255, .045);
+    }
+
+    .reaction-bar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+
+    .reaction-button {
+      min-width: 54px;
+      min-height: 38px;
+      border-radius: 999px;
+      border: 1px solid rgba(19, 232, 255, .18);
+      background: rgba(255, 255, 255, .045);
+      color: #fff;
+      font-weight: 900;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .reaction-button.active,
+    .reaction-button:hover {
+      border-color: rgba(19, 232, 255, .78);
+      background: rgba(176, 38, 255, .22);
+      box-shadow: 0 0 16px rgba(176, 38, 255, .18);
+    }
+
     .news-detail-header {
       display: grid;
       gap: 14px;
@@ -571,10 +621,12 @@
     .news-hero {
       width: 100%;
       aspect-ratio: 16 / 9;
+      min-height: 240px;
       max-height: 460px;
       border-radius: 8px;
       border: 1px solid rgba(19, 232, 255, .2);
-      object-fit: contain;
+      object-fit: cover;
+      object-position: center;
       background: rgba(5, 9, 20, .62);
       display: block;
     }
@@ -897,6 +949,14 @@
         grid-template-columns: 1fr;
       }
 
+      .news-image {
+        min-height: 180px;
+      }
+
+      .news-hero {
+        min-height: 210px;
+      }
+
       .release-card .badge {
         grid-column: auto;
       }
@@ -1195,6 +1255,7 @@
     const SCREENSHOT_BUCKET = "screenshots";
     const RAWG_API_KEY = "524d7823d74242bc9d4b689c8a2f412b";
     const ADMIN_CODE = "Demoparacalvos";
+    const REACTION_OPTIONS = ["\u{1F44D}", "\u{1F525}", "\u{1F602}", "\u2764\uFE0F", "\u{1F3AE}"];
     const today = new Date().toISOString().slice(0, 10);
 
     const initialState = {
@@ -1354,6 +1415,8 @@
         text: item.text || "",
         image: item.image || "",
         createdAt: item.createdAt || new Date().toISOString(),
+        views: Number(item.views || 0),
+        reactions: normalizeReactions(item.reactions),
         localOnly: Boolean(item.localOnly)
       }));
       savedState.activeNewsId = savedState.activeNewsId || "";
@@ -1366,6 +1429,8 @@
         text: item.text || "",
         image: item.image || "",
         createdAt: item.createdAt || new Date().toISOString(),
+        views: Number(item.views || 0),
+        reactions: normalizeReactions(item.reactions),
         localOnly: Boolean(item.localOnly)
       }));
       savedState.activeAnalysisId = savedState.activeAnalysisId || "";
@@ -1391,6 +1456,35 @@
 
     function saveState() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function normalizeReactions(value) {
+      let source = value || {};
+      if (typeof source === "string") {
+        try {
+          source = JSON.parse(source);
+        } catch {
+          source = {};
+        }
+      }
+
+      return REACTION_OPTIONS.reduce((reactions, emote) => {
+        reactions[emote] = Math.max(0, Number(source?.[emote] || 0));
+        return reactions;
+      }, {});
+    }
+
+    function reactionTotal(item) {
+      const reactions = normalizeReactions(item?.reactions);
+      return Object.values(reactions).reduce((sum, value) => sum + Number(value || 0), 0);
+    }
+
+    function reactionStorageKey(kind, id) {
+      return `los-insistidores-${kind}-reaction-${id}`;
+    }
+
+    function viewStorageKey(kind, id) {
+      return `los-insistidores-${kind}-view-${id}`;
     }
 
     function contentKey(item) {
@@ -1576,6 +1670,8 @@
         image: row.image || "",
         createdAt: row.created_at || new Date().toISOString(),
         deletedAt: row.deleted_at || "",
+        views: Number(row.views || 0),
+        reactions: normalizeReactions(row.reactions),
         localOnly: false
       };
     }
@@ -1587,7 +1683,9 @@
         body: item.text || "",
         image: item.image || "",
         created_at: item.createdAt || new Date().toISOString(),
-        deleted_at: item.deletedAt || null
+        deleted_at: item.deletedAt || null,
+        views: Number(item.views || 0),
+        reactions: normalizeReactions(item.reactions)
       };
     }
 
@@ -1686,6 +1784,8 @@
         image: row.image || "",
         createdAt: row.created_at || new Date().toISOString(),
         deletedAt: row.deleted_at || "",
+        views: Number(row.views || 0),
+        reactions: normalizeReactions(row.reactions),
         localOnly: false
       };
     }
@@ -1697,7 +1797,9 @@
         body: item.text || "",
         image: item.image || "",
         created_at: item.createdAt || new Date().toISOString(),
-        deleted_at: item.deletedAt || null
+        deleted_at: item.deletedAt || null,
+        views: Number(item.views || 0),
+        reactions: normalizeReactions(item.reactions)
       };
     }
 
@@ -2007,6 +2109,39 @@
       return { total, thisYear, avg, best };
     }
 
+    function impactMarkup(item) {
+      return `
+        <div class="impact-row">
+          <span class="impact-pill" title="Visualizaciones">👁 ${Number(item.views || 0)}</span>
+          <span class="impact-pill" title="Reacciones">💬 ${reactionTotal(item)}</span>
+        </div>
+      `;
+    }
+
+    function reactionsMarkup(kind, item) {
+      const reactions = normalizeReactions(item.reactions);
+      const selected = localStorage.getItem(reactionStorageKey(kind, item.id)) || "";
+      return `
+        <div class="reaction-bar" aria-label="Reacciones">
+          ${REACTION_OPTIONS.map(emote => `
+            <button class="reaction-button ${selected === emote ? "active" : ""}" data-react-kind="${kind}" data-react-id="${item.id}" data-react-emote="${emote}" type="button" title="Reaccionar con ${emote}">
+              <span>${emote}</span>
+              <span>${Number(reactions[emote] || 0)}</span>
+            </button>
+          `).join("")}
+        </div>
+      `;
+    }
+
+    function impactMarkup(item) {
+      return `
+        <div class="impact-row">
+          <span class="impact-pill" title="Visualizaciones">&#128065; ${Number(item.views || 0)}</span>
+          <span class="impact-pill" title="Reacciones">&#128172; ${reactionTotal(item)}</span>
+        </div>
+      `;
+    }
+
     function renderTabs() {
       document.querySelectorAll(".tab").forEach(tab => {
         const isNewsArea = ["noticias", "noticia-form", "noticia-detalle"].includes(state.currentView);
@@ -2040,6 +2175,7 @@
               <p class="small">${escapeHtml(formatDateTime(item.createdAt))}</p>
               ${item.localOnly ? `<p class="small">Solo en este dispositivo. Revisa Settings y Supabase.</p>` : ""}
               <p class="news-summary">${escapeHtml(summaryText(item.text, 180))}</p>
+              ${impactMarkup(item)}
             </div>
           </button>
         `).join("");
@@ -2062,8 +2198,10 @@
           <div>
             <h2>${escapeHtml(item.title)}</h2>
             <p class="small">${escapeHtml(formatDateTime(item.createdAt))}</p>
+            ${impactMarkup(item)}
           </div>
           <p class="news-full-text">${linkifyText(item.text)}</p>
+          ${reactionsMarkup("news", item)}
           ${videoId ? `<iframe class="youtube-frame" src="https://www.youtube.com/embed/${escapeHtml(videoId)}" title="Vídeo de YouTube" allowfullscreen></iframe>` : ""}
         </div>
       `;
@@ -2085,6 +2223,7 @@
               <p class="small">${escapeHtml(formatDateTime(item.createdAt))}</p>
               ${item.localOnly ? `<p class="small">Solo en este dispositivo. Revisa Settings y Supabase.</p>` : ""}
               <p class="news-summary">${escapeHtml(summaryText(item.text, 220))}</p>
+              ${impactMarkup(item)}
             </div>
           </button>
         `).join("");
@@ -2107,8 +2246,10 @@
           <div>
             <h2>${escapeHtml(item.title)}</h2>
             <p class="small">${escapeHtml(formatDateTime(item.createdAt))}</p>
+            ${impactMarkup(item)}
           </div>
           <p class="news-full-text">${linkifyText(item.text)}</p>
+          ${reactionsMarkup("analysis", item)}
           ${videoId ? `<iframe class="youtube-frame" src="https://www.youtube.com/embed/${escapeHtml(videoId)}" title="Vídeo de YouTube" allowfullscreen></iframe>` : ""}
         </div>
       `;
@@ -2473,6 +2614,8 @@
         text,
         image: image || existing?.image || "",
         createdAt: existing?.createdAt || new Date().toISOString(),
+        views: Number(existing?.views || 0),
+        reactions: normalizeReactions(existing?.reactions),
         localOnly: false
       };
 
@@ -2518,6 +2661,8 @@
         text,
         image: image || existing?.image || "",
         createdAt: existing?.createdAt || new Date().toISOString(),
+        views: Number(existing?.views || 0),
+        reactions: normalizeReactions(existing?.reactions),
         localOnly: false
       };
 
@@ -2535,6 +2680,70 @@
       state.currentView = "analisis-detalle";
       els.analysisForm.reset();
       render();
+    }
+
+    function contentCollection(kind) {
+      return kind === "analysis" ? state.analyses : state.news;
+    }
+
+    function updateContentCollection(kind, item) {
+      if (kind === "analysis") {
+        state.analyses = state.analyses.map(current => current.id === item.id ? item : current);
+      } else {
+        state.news = state.news.map(current => current.id === item.id ? item : current);
+      }
+    }
+
+    async function saveContentImpact(kind, item) {
+      try {
+        const saved = kind === "analysis" ? await updateRemoteAnalysis(item) : await updateRemoteNews(item);
+        updateContentCollection(kind, saved);
+      } catch {
+        item.localOnly = true;
+        updateContentCollection(kind, item);
+      }
+      saveState();
+    }
+
+    function trackContentView(kind, id) {
+      const item = contentCollection(kind).find(current => current.id === id);
+      if (!item) return;
+      const key = viewStorageKey(kind, id);
+      if (localStorage.getItem(key)) return;
+      localStorage.setItem(key, "1");
+      item.views = Number(item.views || 0) + 1;
+      updateContentCollection(kind, item);
+      saveContentImpact(kind, item);
+    }
+
+    function handleReactionClick(event) {
+      const button = event.target.closest("[data-react-kind]");
+      if (!button) return;
+      const kind = button.dataset.reactKind;
+      const id = button.dataset.reactId;
+      const emote = button.dataset.reactEmote;
+      const item = contentCollection(kind).find(current => current.id === id);
+      if (!item) return;
+
+      const reactions = normalizeReactions(item.reactions);
+      const key = reactionStorageKey(kind, id);
+      const previous = localStorage.getItem(key) || "";
+
+      if (previous === emote) {
+        reactions[emote] = Math.max(0, Number(reactions[emote] || 0) - 1);
+        localStorage.removeItem(key);
+      } else {
+        if (previous && reactions[previous] !== undefined) {
+          reactions[previous] = Math.max(0, Number(reactions[previous] || 0) - 1);
+        }
+        reactions[emote] = Number(reactions[emote] || 0) + 1;
+        localStorage.setItem(key, emote);
+      }
+
+      item.reactions = reactions;
+      updateContentCollection(kind, item);
+      render();
+      saveContentImpact(kind, item);
     }
 
     async function handleSubmit(event) {
@@ -3078,6 +3287,7 @@
       if (!card) return;
       state.activeAnalysisId = card.dataset.analysis;
       state.currentView = "analisis-detalle";
+      trackContentView("analysis", state.activeAnalysisId);
       render();
     });
 
@@ -3092,8 +3302,12 @@
       if (!card) return;
       state.activeNewsId = card.dataset.news;
       state.currentView = "noticia-detalle";
+      trackContentView("news", state.activeNewsId);
       render();
     });
+
+    els.newsDetail.addEventListener("click", handleReactionClick);
+    els.analysisDetail.addEventListener("click", handleReactionClick);
 
     els.adminLoginButton.addEventListener("click", () => {
       if (els.adminCodeInput.value.trim() !== ADMIN_CODE) {

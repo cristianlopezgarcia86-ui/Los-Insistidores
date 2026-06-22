@@ -79,10 +79,14 @@ create table if not exists public.news (
   body text not null default '',
   image text not null default '',
   created_at timestamptz not null default now(),
-  deleted_at timestamptz
+  deleted_at timestamptz,
+  views integer not null default 0,
+  reactions jsonb not null default '{}'::jsonb
 );
 
 alter table public.news add column if not exists deleted_at timestamptz;
+alter table public.news add column if not exists views integer not null default 0;
+alter table public.news add column if not exists reactions jsonb not null default '{}'::jsonb;
 
 alter table public.news enable row level security;
 
@@ -121,10 +125,14 @@ create table if not exists public.analyses (
   body text not null default '',
   image text not null default '',
   created_at timestamptz not null default now(),
-  deleted_at timestamptz
+  deleted_at timestamptz,
+  views integer not null default 0,
+  reactions jsonb not null default '{}'::jsonb
 );
 
 alter table public.analyses add column if not exists deleted_at timestamptz;
+alter table public.analyses add column if not exists views integer not null default 0;
+alter table public.analyses add column if not exists reactions jsonb not null default '{}'::jsonb;
 
 alter table public.analyses enable row level security;
 
