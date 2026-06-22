@@ -1231,24 +1231,8 @@
           screenshots: []
         }
       ],
-      news: [
-        {
-          id: "seed-news-welcome",
-          title: "Bienvenidos a Los Insistidores",
-          text: "Este será el tablón para dejar noticias, avisos, vídeos y cualquier publicación que queráis destacar para el grupo.",
-          image: "",
-          createdAt: new Date().toISOString()
-        }
-      ],
-      analyses: [
-        {
-          id: "seed-analysis-welcome",
-          title: "Primer análisis",
-          text: "Aquí podréis publicar análisis completos de juegos, con imagen de cabecera, texto y vídeos de YouTube integrados.",
-          image: "",
-          createdAt: new Date().toISOString()
-        }
-      ],
+      news: [],
+      analyses: [],
       releases: [
         { id: "sample-1", date: "2026-06-19", dayLabel: "Jun 19", title: "EA Sports UFC 6", platforms: "Xbox Series X / PlayStation 5 / PC", hype: "29", url: "https://rawg.io/search?query=EA%20Sports%20UFC%206", cover: "", source: "RAWG.io" },
         { id: "sample-2", date: "2026-06-19", dayLabel: "Jun 19", title: "Thank You For Your Application", platforms: "PC", hype: "16", url: "https://rawg.io/search?query=Thank%20You%20For%20Your%20Application", cover: "", source: "RAWG.io" },
@@ -1371,7 +1355,7 @@
       savedState.activeNewsId = savedState.activeNewsId || "";
       savedState.deletedNewsIds = Array.isArray(savedState.deletedNewsIds) ? savedState.deletedNewsIds : [];
       savedState.news = dedupeContentItems(savedState.news)
-        .filter(item => !savedState.deletedNewsIds.includes(item.id));
+        .filter(item => !savedState.deletedNewsIds.includes(item.id) && !isSeedItem(item));
       savedState.analyses = (savedState.analyses || structuredClone(initialState.analyses)).map(item => ({
         id: item.id || crypto.randomUUID(),
         title: item.title || "Análisis sin título",
@@ -1383,7 +1367,7 @@
       savedState.activeAnalysisId = savedState.activeAnalysisId || "";
       savedState.deletedAnalysisIds = Array.isArray(savedState.deletedAnalysisIds) ? savedState.deletedAnalysisIds : [];
       savedState.analyses = dedupeContentItems(savedState.analyses)
-        .filter(item => !savedState.deletedAnalysisIds.includes(item.id));
+        .filter(item => !savedState.deletedAnalysisIds.includes(item.id) && !isSeedItem(item));
       if (savedState.currentView === "muro") {
         savedState.currentView = "noticias";
       }
@@ -1423,7 +1407,11 @@
     }
 
     function isSeedItem(item) {
-      return item?.id === "seed-news-welcome" || item?.id === "seed-analysis-welcome";
+      const title = String(item?.title || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+      return item?.id === "seed-news-welcome"
+        || item?.id === "seed-analysis-welcome"
+        || title === "bienvenidos a los insistidores"
+        || title === "primer analisis";
     }
 
     async function loadRemoteGames() {
@@ -1538,7 +1526,7 @@
 
       remoteNewsReady = true;
       const remoteNews = dedupeContentItems(data.map(fromRemoteNews))
-        .filter(item => !state.deletedNewsIds.includes(item.id));
+        .filter(item => !state.deletedNewsIds.includes(item.id) && !isSeedItem(item));
       const remoteIds = new Set(remoteNews.map(item => item.id));
       const remoteKeys = new Set(remoteNews.map(contentKey));
       const pendingLocalNews = localNews
@@ -1657,7 +1645,7 @@
 
       remoteAnalysesReady = true;
       const remoteAnalyses = dedupeContentItems(data.map(fromRemoteAnalysis))
-        .filter(item => !state.deletedAnalysisIds.includes(item.id));
+        .filter(item => !state.deletedAnalysisIds.includes(item.id) && !isSeedItem(item));
       const remoteIds = new Set(remoteAnalyses.map(item => item.id));
       const remoteKeys = new Set(remoteAnalyses.map(contentKey));
       const pendingLocalAnalyses = localAnalyses

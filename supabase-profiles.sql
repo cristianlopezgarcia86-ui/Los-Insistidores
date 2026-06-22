@@ -107,3 +107,11 @@ on public.analyses
 for delete
 to anon
 using (true);
+
+delete from public.news
+where id = 'seed-news-welcome'
+   or lower(title) = 'bienvenidos a los insistidores';
+
+delete from public.analyses
+where id = 'seed-analysis-welcome'
+   or lower(title) in ('primer análisis', 'primer analisis');
